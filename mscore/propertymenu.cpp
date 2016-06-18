@@ -26,7 +26,7 @@
 #include "lineproperties.h"
 #include "tremolobarprop.h"
 #include "timesigproperties.h"
-#include "textstyle.h"
+#include "textstyledialog.h"
 #include "textproperties.h"
 #include "sectionbreakprop.h"
 #include "stafftextproperties.h"
@@ -414,14 +414,14 @@ void ScoreView::elementPropertyAction(const QString& cmd, Element* e)
       else if (cmd == "v-props") {
             VoltaSegment* vs = static_cast<VoltaSegment*>(e);
             VoltaProperties vp;
-            vp.setText(vs->volta()->text());
+            vp.setText(Text::unEscape(vs->volta()->text()));
             vp.setEndings(vs->volta()->endings());
             int rv = vp.exec();
             if (rv) {
                   QString txt  = vp.getText();
                   QList<int> l = vp.getEndings();
                   if (txt != vs->volta()->text())
-                        vs->volta()->undoChangeProperty(P_ID::BEGIN_TEXT, txt);
+                        vs->volta()->undoChangeProperty(P_ID::BEGIN_TEXT, Text::tagEscape(txt));
                   if (l != vs->volta()->endings())
                         vs->volta()->undoChangeProperty(P_ID::VOLTA_ENDING, QVariant::fromValue(l));
                   }
@@ -469,7 +469,7 @@ void ScoreView::elementPropertyAction(const QString& cmd, Element* e)
                   StaffText* nt = rp.staffText()->clone();
                   nt->setScore(score);
                   score->undoChangeElement(e, nt);
-                  score->updateChannel();
+                  score->masterScore()->updateChannel();
                   score->updateSwing();
                   score->setPlaylistDirty();
                   }
@@ -512,9 +512,9 @@ void ScoreView::elementPropertyAction(const QString& cmd, Element* e)
                         // TODO: undo/redo
                         ss->setInstrument(Instrument::fromTemplate(it));
                         ss->staff()->part()->setInstrument(ss->instrument(), ss->segment()->tick());
-                        score()->rebuildMidiMapping();
+                        score()->masterScore()->rebuildMidiMapping();
                         seq->initInstruments();
-                        score()->setLayoutAll(true);
+                        score()->setLayoutAll();
                         }
                   else
                         qDebug("no template selected?");
@@ -554,7 +554,7 @@ void ScoreView::elementPropertyAction(const QString& cmd, Element* e)
                         //Instrument* instrument = new Instrument(Instrument::fromTemplate(it));
                         ic->setInstrument(Instrument::fromTemplate(it));
                         score()->undo(new ChangeInstrument(ic, ic->instrument()));
-                        score()->updateChannel();
+                        score()->masterScore()->updateChannel();
                         }
                   else
                         qDebug("no template selected?");

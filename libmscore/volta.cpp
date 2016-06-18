@@ -27,7 +27,7 @@ void VoltaSegment::layout()
       rypos() = 0.0;
       TextLineSegment::layout1();
       if (parent())     // for palette
-            rypos() += score()->styleS(StyleIdx::voltaY).val() * spatium();
+            rypos() += score()->styleP(StyleIdx::voltaY) * mag();
       adjustReadPos();
       }
 
@@ -302,7 +302,6 @@ QVariant Volta::getProperty(P_ID propertyId) const
 
 bool Volta::setProperty(P_ID propertyId, const QVariant& val)
       {
-      score()->addRefresh(pageBoundingRect());
       switch (propertyId) {
             case P_ID::VOLTA_TYPE:
                   setVoltaType(Type(val.toInt()));
@@ -312,7 +311,7 @@ bool Volta::setProperty(P_ID propertyId, const QVariant& val)
                   break;
             case P_ID::LINE_WIDTH:
                   lineWidthStyle = PropertyStyle::UNSTYLED;
-                  setLineWidth(Spatium(val.toDouble()));
+                  setLineWidth(val.value<Spatium>());
                   break;
             case P_ID::LINE_STYLE:
                   lineStyleStyle = PropertyStyle::UNSTYLED;
@@ -323,9 +322,7 @@ bool Volta::setProperty(P_ID propertyId, const QVariant& val)
                         return false;
                   break;
             }
-      // layout();
-      // score()->addRefresh(pageBoundingRect());
-      score()->setLayoutAll(true);
+      triggerLayout();
       return true;
       }
 
@@ -335,7 +332,7 @@ bool Volta::setProperty(P_ID propertyId, const QVariant& val)
 
 QVariant Volta::propertyDefault(P_ID propertyId) const
       {
-      switch(propertyId) {
+      switch (propertyId) {
             case P_ID::LINE_STYLE:
                   return score()->styleI(StyleIdx::voltaLineStyle);
 
@@ -346,7 +343,7 @@ QVariant Volta::propertyDefault(P_ID propertyId) const
                   return 0;
 
             case P_ID::LINE_WIDTH:
-                  return score()->styleS(StyleIdx::voltaLineWidth).val();
+                  return score()->style(StyleIdx::voltaLineWidth);
 
             case P_ID::BEGIN_TEXT_PLACE:
             case P_ID::CONTINUE_TEXT_PLACE:
@@ -360,7 +357,7 @@ QVariant Volta::propertyDefault(P_ID propertyId) const
 
             case P_ID::BEGIN_HOOK_HEIGHT:
             case P_ID::END_HOOK_HEIGHT:
-                  return score()->styleS(StyleIdx::voltaHook).val();
+                  return score()->style(StyleIdx::voltaHook);
 
             case P_ID::TEXT_STYLE_TYPE:
                   return int(TextStyleType::VOLTA);
@@ -444,7 +441,7 @@ void Volta::styleChanged()
 void Volta::reset()
       {
       if (lineWidthStyle == PropertyStyle::UNSTYLED)
-            score()->undoChangeProperty(this, P_ID::LINE_WIDTH, propertyDefault(P_ID::LINE_WIDTH), PropertyStyle::STYLED);
+            undoChangeProperty(P_ID::LINE_WIDTH, propertyDefault(P_ID::LINE_WIDTH), PropertyStyle::STYLED);
       TextLine::reset();
       }
 
@@ -452,7 +449,7 @@ void Volta::reset()
 //   accessibleInfo
 //---------------------------------------------------------
 
-QString Volta::accessibleInfo()
+QString Volta::accessibleInfo() const
       {
       return QString("%1: %2").arg(Element::accessibleInfo()).arg(text());
       }

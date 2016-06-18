@@ -35,6 +35,7 @@ extern double converterDpi;
 extern double guiScaling;
 extern int trimMargin;
 extern bool noWebView;
+extern bool ignoreWarnings;
 
 //---------------------------------------------------------
 // MsWidget
@@ -95,8 +96,9 @@ struct MidiRemote {
 
 extern const char* stateName(ScoreState);
 
-static constexpr qreal DPMM_DISPLAY    = 4;   // 100 DPI
-static constexpr qreal PALETTE_SPATIUM = 1.9 * DPMM_DISPLAY;
+static constexpr qreal DPI_DISPLAY     = 96.0;  // 96 DPI nominal resolution
+static constexpr qreal DPMM_DISPLAY    = DPI_DISPLAY / 25.4;
+static constexpr qreal PALETTE_SPATIUM = 1.764 * DPMM_DISPLAY;
 
 extern QPaintDevice* pdev;
 

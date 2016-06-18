@@ -53,6 +53,10 @@
     <seq>Ctrl+V</seq>
     </SC>
   <SC>
+    <key>swap</key>
+    <seq>Ctrl+Shift+X</seq>
+    </SC>
+  <SC>
     <key>instruments</key>
     <seq>I</seq>
     </SC>
@@ -190,11 +194,11 @@
     </SC>
   <SC>
     <key>add-tenuto</key>
-    <seq>Ctrl+Alt+N</seq>
+    <seq>Shift+N</seq>
     </SC>
   <SC>
     <key>add-marcato</key>
-    <seq>Ctrl+Alt+O</seq>
+    <seq>Shift+O</seq>
     </SC>
   <SC>
     <key>add-sforzato</key>
@@ -677,6 +681,7 @@
   <SC>
     <key>fullscreen</key>
     <seq>Ctrl+U</seq>
+    <seq>Meta+Ctrl+F</seq>
     </SC>
   <SC>
     <key>repitch</key>
@@ -969,5 +974,10 @@
     <key>startcenter</key>
     <seq>F4</seq>
     </SC>
+  <SC>
+    <key>viewmode</key>
+    <seq>Ctrl+Shift+V</seq>
+    </SC>
+
   </Shortcuts>
 

@@ -39,6 +39,9 @@
 #include "cleflist.h"
 #include "note.h"
 #include "drumset.h"
+#include "rest.h"
+
+Q_DECLARE_LOGGING_CATEGORY(undoRedo)
 
 namespace Ms {
 
@@ -81,13 +84,7 @@ class BarLine;
 enum class ClefType : signed char;
 enum class PlayEventType : char;
 
-// #define DEBUG_UNDO
-
-#ifdef DEBUG_UNDO
-#define UNDO_NAME(a)  virtual const char* name() const { return a; }
-#else
-#define UNDO_NAME(a)
-#endif
+#define UNDO_NAME(a)  virtual const char* name() const override { return a; }
 
 enum class LayoutMode : char;
 
@@ -110,9 +107,9 @@ class UndoCommand {
       int childCount() const             { return childList.size();     }
       void unwind();
       virtual void cleanup(bool undo);
-#ifdef DEBUG_UNDO
-      virtual const char* name() const  { return "UndoCommand"; }
-#endif
+// #ifndef QT_NO_DEBUG
+      virtual const char* name() const { return "UndoCommand"; }
+// #endif
       };
 
 //---------------------------------------------------------
@@ -139,7 +136,7 @@ class UndoStack {
       bool canUndo() const          { return curIdx > 0;           }
       bool canRedo() const          { return curIdx < list.size(); }
       bool isClean() const          { return cleanIdx == curIdx;   }
-      bool isEmpty() const          { return !canUndo() && !canRedo();  }
+      bool empty() const          { return !canUndo() && !canRedo();  }
       UndoCommand* current() const  { return curCmd;               }
       void undo();
       void redo();
@@ -382,49 +379,6 @@ class ChangeElement : public UndoCommand {
       };
 
 //---------------------------------------------------------
-//   ChangeChordRestSize
-//---------------------------------------------------------
-
-class ChangeChordRestSize : public UndoCommand {
-      ChordRest* cr;
-      bool small;
-      void flip();
-
-   public:
-      ChangeChordRestSize(ChordRest*, bool small);
-      UNDO_NAME("ChangeChordRestSize")
-      };
-
-//---------------------------------------------------------
-//   ChangeChordNoStem
-//---------------------------------------------------------
-
-class ChangeChordNoStem : public UndoCommand {
-      Chord* chord;
-      bool noStem;
-      void flip();
-
-   public:
-      ChangeChordNoStem(Chord*, bool noStem);
-      UNDO_NAME("ChangeChordNoStem")
-      };
-
-//---------------------------------------------------------
-//   ChangeEndBarLineType
-//---------------------------------------------------------
-
-class ChangeEndBarLineType : public UndoCommand {
-      Measure* measure;
-      BarLineType subtype;
-      bool endBarLineGenerated;
-      void flip();
-
-   public:
-      ChangeEndBarLineType(Measure*, BarLineType subtype);
-      UNDO_NAME("ChangeEndBarLineType")
-      };
-
-//---------------------------------------------------------
 //   ChangeBarLineSpan
 //---------------------------------------------------------
 
@@ -574,9 +528,7 @@ class AddElement : public UndoCommand {
       virtual void undo();
       virtual void redo();
       virtual void cleanup(bool);
-#ifdef DEBUG_UNDO
-      virtual const char* name() const;
-#endif
+      virtual const char* name() const override;
       };
 
 //---------------------------------------------------------
@@ -591,9 +543,7 @@ class RemoveElement : public UndoCommand {
       virtual void undo();
       virtual void redo();
       virtual void cleanup(bool);
-#ifdef DEBUG_UNDO
-      virtual const char* name() const;
-#endif
+      virtual const char* name() const override;
       };
 
 //---------------------------------------------------------
@@ -883,21 +833,6 @@ class ChangeImage : public UndoCommand {
       };
 
 //---------------------------------------------------------
-//   ChangeDuration
-//---------------------------------------------------------
-
-class ChangeDuration : public UndoCommand {
-      ChordRest* cr;
-      Fraction d;
-
-      void flip();
-
-   public:
-      ChangeDuration(ChordRest* _cr, Fraction _d) : cr(_cr), d(_d) {}
-      UNDO_NAME("ChangeDuration")
-      };
-
-//---------------------------------------------------------
 //   AddExcerpt
 //---------------------------------------------------------
 
@@ -923,6 +858,22 @@ class RemoveExcerpt : public UndoCommand {
       virtual void undo();
       virtual void redo();
       UNDO_NAME("RemoveExcerpt")
+      };
+
+//---------------------------------------------------------
+//   SwapExcerpt
+//---------------------------------------------------------
+
+class SwapExcerpt : public UndoCommand {
+      MasterScore* score;
+      int pos1;
+      int pos2;
+
+   public:
+      SwapExcerpt(MasterScore* s, int p1, int p2) : score(s), pos1(p1), pos2(p2) {}
+      virtual void undo();
+      virtual void redo();
+      UNDO_NAME("SwapExcerpt")
       };
 
 //---------------------------------------------------------
@@ -1032,22 +983,6 @@ class MoveStaff : public UndoCommand {
    public:
       MoveStaff(Staff* s, Part* p, int idx) : staff(s), part(p), rstaff(idx) {}
       UNDO_NAME("MoveStaff")
-      };
-
-//---------------------------------------------------------
-//   ChangeDurationType
-//---------------------------------------------------------
-
-class ChangeDurationType : public UndoCommand {
-      ChordRest* cr;
-      TDuration t;
-
-      void flip();
-
-   public:
-      ChangeDurationType(ChordRest* _cr, TDuration _t)
-         : cr(_cr), t(_t) {}
-      UNDO_NAME("ChangeDurationType")
       };
 
 //---------------------------------------------------------
@@ -1274,7 +1209,7 @@ class LinkUnlink : public UndoCommand {
 class Unlink : public LinkUnlink {
 
    public:
-      Unlink(ScoreElement* e) : LinkUnlink(e, nullptr) {}
+      Unlink(ScoreElement* _e) : LinkUnlink(_e, 0) {}
       virtual void undo() override { doLink();   }
       virtual void redo() override { doUnlink(); }
       UNDO_NAME("Unlink")
@@ -1285,6 +1220,7 @@ class Unlink : public LinkUnlink {
 //---------------------------------------------------------
 
 class Link : public LinkUnlink {
+
    public:
       Link(ScoreElement* e, ScoreElement* le) : LinkUnlink(e, le) {}
       virtual void undo() override { doUnlink(); }
@@ -1368,6 +1304,20 @@ class ChangeDrumset : public UndoCommand {
       UNDO_NAME("ChangeDrumset")
       };
 
+//---------------------------------------------------------
+//   ChangeGap
+//---------------------------------------------------------
+
+class ChangeGap : public UndoCommand {
+      Rest* rest;
+      bool v;
+
+      void flip();
+
+   public:
+      ChangeGap(Rest* r, bool v) : rest(r), v(v) {}
+      UNDO_NAME("ChangeGap")
+      };
+
 }     // namespace Ms
 #endif
-

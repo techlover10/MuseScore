@@ -77,8 +77,11 @@
      </property>
      <item row="1" column="2">
       <widget class="QToolButton" name="resetY">
+       <property name="toolTip">
+        <string>Reset value</string>
+       </property>
        <property name="accessibleName">
-        <string>Reset Vertical offset value</string>
+        <string>Reset 'Vertical offset' value</string>
        </property>
        <property name="text">
         <string notr="true">...</string>
@@ -128,8 +131,11 @@
      </item>
      <item row="0" column="2">
       <widget class="QToolButton" name="resetX">
+       <property name="toolTip">
+        <string>Reset value</string>
+       </property>
        <property name="accessibleName">
-        <string>Reset Horizontal offset value</string>
+        <string>Reset 'Horizontal offset' value</string>
        </property>
        <property name="text">
         <string notr="true">...</string>
@@ -180,7 +186,7 @@
         <string>Reset value</string>
        </property>
        <property name="accessibleName">
-        <string>Reset Stem direction value</string>
+        <string>Reset 'Stem direction' value</string>
        </property>
        <property name="text">
         <string notr="true">...</string>
@@ -231,7 +237,7 @@
         <string>Reset value</string>
        </property>
        <property name="accessibleName">
-        <string>Reset Small Value</string>
+        <string>Reset 'Small' value</string>
        </property>
        <property name="text">
         <string notr="true">...</string>
@@ -244,7 +250,7 @@
         <string>Reset value</string>
        </property>
        <property name="accessibleName">
-        <string>Reset Stemless value</string>
+        <string>Reset 'Stemless' value</string>
        </property>
        <property name="text">
         <string notr="true">...</string>
@@ -305,8 +311,6 @@
   <tabstop>stemDirection</tabstop>
   <tabstop>resetStemDirection</tabstop>
  </tabstops>
- <resources>
-  <include location="../musescore.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

@@ -365,7 +365,7 @@ void ScoreView::startFotomode()
       curGrip = Grip::START;
       updateGrips();
       _score->addRefresh(_foto->abbox());
-      _score->end();
+      _score->update();
       mscore->changeState(STATE_FOTO);
       }
 
@@ -392,7 +392,7 @@ void ScoreView::stopFotomode()
 void ScoreView::startFotoDrag()
       {
       _score->addRefresh(_foto->abbox());
-      _score->end();
+      _score->update();
       grips = 0;
       }
 
@@ -431,7 +431,7 @@ void ScoreView::endFotoDrag()
       editObject = _foto;
       updateGrips();
       _score->setUpdateAll();
-      _score->end();
+      _score->update();
       }
 
 //---------------------------------------------------------
@@ -442,7 +442,6 @@ void ScoreView::doFotoDragEdit(QMouseEvent* ev)
       {
       QPointF p     = toLogical(ev->pos());
       QPointF delta = p - data.startMove;
-      _score->setLayoutAll(false);
       score()->addRefresh(_foto->abbox());
       EditData ed;
       ed.curGrip = curGrip;
@@ -451,7 +450,7 @@ void ScoreView::doFotoDragEdit(QMouseEvent* ev)
       _foto->editDrag(ed);
       updateGrips();
       data.startMove = p;
-      _score->end();
+      _score->update();
       if (mscore->inspector())
             mscore->inspector()->setElement(_foto);
       }
@@ -494,7 +493,7 @@ bool ScoreView::fotoEditElementDragTransition(QMouseEvent* ev)
                               break;
                         }
                   updateGrips();
-                  score()->end();
+                  score()->update();
                   break;
                   }
             }
@@ -543,13 +542,12 @@ void ScoreView::doDragFotoRect(QMouseEvent* ev)
       {
       QPointF p(toLogical(ev->pos()));
       QPointF delta = p - data.startMove;
-      _score->setLayoutAll(false);
       score()->addRefresh(_foto->abbox());
       _foto->setRect(_foto->rect().translated(delta));
       score()->addRefresh(_foto->abbox());
       data.startMove = p;
       updateGrips();
-      _score->end();
+      _score->update();
       if (mscore->inspector())
             mscore->inspector()->setElement(_foto);
       }
@@ -734,9 +732,9 @@ bool ScoreView::fotoRectHit(const QPoint& pos)
 bool ScoreView::saveFotoAs(bool printMode, const QRectF& r)
       {
       QStringList fl;
-      fl.append(tr("PNG Bitmap Graphic (*.png)"));
-      fl.append(tr("PDF File (*.pdf)"));
-      fl.append(tr("Scalable Vector Graphic (*.svg)"));
+      fl.append(tr("PNG Bitmap Graphic") + " (*.png)");
+      fl.append(tr("PDF File") + " (*.pdf)");
+      fl.append(tr("Scalable Vector Graphic") + " (*.svg)");
 
       QString selectedFilter;
       QString filter = fl.join(";;");
@@ -775,6 +773,8 @@ bool ScoreView::saveFotoAs(bool printMode, const QRectF& r)
       double convDpi   = preferences.pngResolution;
       double mag       = convDpi / DPI;
 
+      if (ext == "svg") mag = 1; // SVG is not scaled, it's scalable.
+
       int w = lrint(r.width()  * mag);
       int h = lrint(r.height() * mag);
 
@@ -796,13 +796,14 @@ bool ScoreView::saveFotoAs(bool printMode, const QRectF& r)
             // note that clipping is not implemented
             // (as of 4.8)
             SvgGenerator printer;
-            printer.setResolution(int(convDpi));
             printer.setFileName(fn);
+            printer.setTitle(_score->title());
             printer.setSize(QSize(w, h));
             printer.setViewBox(QRect(0, 0, w, h));
-            printer.setDescription("created with MuseScore " VERSION);
             QPainter p(&printer);
+            MScore::pdfPrinting = true;
             paintRect(printMode, p, r, mag);
+            MScore::pdfPrinting = false;
             }
       else if (ext == "png") {
             QImage::Format f = QImage::Format_ARGB32_Premultiplied;
@@ -868,17 +869,17 @@ void ScoreView::fotoDragDrop(QMouseEvent*)
 //      QString fn = "/home/ws/mops.eps";
       QString fn = tf.fileName();
 
+      int w = lrint(r.width());
+      int h = lrint(r.height());
       SvgGenerator printer;
-      double convDpi   = preferences.pngResolution;
-      double mag       = convDpi / DPI;
-      printer.setResolution(int(convDpi));
       printer.setFileName(fn);
-      printer.setSize(QSize(r.width() * mag, r.height() * mag));
-      printer.setViewBox(QRect(0, 0, r.width() * mag, r.height() * mag));
-      printer.setDescription("created with MuseScore " VERSION);
-
+      printer.setTitle(_score->title());
+      printer.setSize(QSize(w, h));
+      printer.setViewBox(QRect(0, 0, w, h));
       QPainter p(&printer);
-      paintRect(printMode, p, r, mag);
+      MScore::pdfPrinting = true;
+      paintRect(printMode, p, r, 1);
+      MScore::pdfPrinting = false;
 
       QDrag* drag = new QDrag(this);
       QMimeData* mimeData = new QMimeData;
