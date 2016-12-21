@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>629</width>
-    <height>595</height>
+    <width>662</width>
+    <height>605</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -104,9 +104,6 @@
          <property name="text">
           <string>Lines:</string>
          </property>
-         <property name="margin">
-          <number>5</number>
-         </property>
          <property name="buddy">
           <cstring>lines</cstring>
          </property>
@@ -141,12 +138,6 @@
          </property>
          <property name="text">
           <string>Line distance:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="margin">
-          <number>5</number>
          </property>
          <property name="buddy">
           <cstring>lineDistance</cstring>
@@ -224,10 +215,10 @@
         <number>0</number>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page">
-        <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0">
+        <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0">
          <property name="spacing">
           <number>5</number>
          </property>
@@ -266,7 +257,63 @@
              </property>
             </widget>
            </item>
+           <item row="3" column="1">
+            <widget class="QComboBox" name="noteHeadScheme"/>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Notehead scheme:</string>
+             </property>
+            </widget>
+           </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="groupPreviewStandard">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>80</height>
+            </size>
+           </property>
+           <property name="title">
+            <string>Preview</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_49">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="Ms::ExampleView" name="standardPreview" native="true">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="lineWidth" stdset="0">
+               <number>2</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
          </item>
          <item>
           <spacer name="verticalSpacer_2">
@@ -394,9 +441,6 @@
                       <property name="text">
                        <string>Font:</string>
                       </property>
-                      <property name="textFormat">
-                       <enum>Qt::PlainText</enum>
-                      </property>
                       <property name="buddy">
                        <cstring>fretFontName</cstring>
                       </property>
@@ -413,12 +457,6 @@
                      <widget class="QLabel" name="fretFontSizeLabel">
                       <property name="text">
                        <string>Size:</string>
-                      </property>
-                      <property name="textFormat">
-                       <enum>Qt::PlainText</enum>
-                      </property>
-                      <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                       </property>
                       <property name="buddy">
                        <cstring>fretFontSize</cstring>
@@ -449,12 +487,6 @@
                      <widget class="QLabel" name="fretYLabel">
                       <property name="text">
                        <string>Vertical offset:</string>
-                      </property>
-                      <property name="textFormat">
-                       <enum>Qt::PlainText</enum>
-                      </property>
-                      <property name="alignment">
-                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                       </property>
                       <property name="buddy">
                        <cstring>fretY</cstring>
@@ -877,9 +909,6 @@
                      <property name="text">
                       <string>Repeat:</string>
                      </property>
-                     <property name="textFormat">
-                      <enum>Qt::PlainText</enum>
-                     </property>
                      <property name="buddy">
                       <cstring>valuesRepeatNever</cstring>
                      </property>
@@ -979,9 +1008,6 @@
                      <property name="text">
                       <string>Stem style:</string>
                      </property>
-                     <property name="textFormat">
-                      <enum>Qt::PlainText</enum>
-                     </property>
                      <property name="buddy">
                       <cstring>stemBesideRadio</cstring>
                      </property>
@@ -1055,9 +1081,6 @@
                      <property name="text">
                       <string>Stem position:</string>
                      </property>
-                     <property name="textFormat">
-                      <enum>Qt::PlainText</enum>
-                     </property>
                      <property name="buddy">
                       <cstring>stemAboveRadio</cstring>
                      </property>
@@ -1130,9 +1153,6 @@
                      </property>
                      <property name="text">
                       <string>Half notes:</string>
-                     </property>
-                     <property name="textFormat">
-                      <enum>Qt::PlainText</enum>
                      </property>
                      <property name="buddy">
                       <cstring>minimNoneRadio</cstring>
@@ -1234,7 +1254,7 @@
          <item>
           <widget class="QGroupBox" name="groupPreview">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -1249,8 +1269,30 @@
             <string>Preview</string>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_9">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
             <item>
-             <widget class="Ms::ScoreView" name="preview" native="true"/>
+             <widget class="Ms::ExampleView" name="tabPreview" native="true">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="lineWidth" stdset="0">
+               <number>2</number>
+              </property>
+             </widget>
             </item>
            </layout>
           </widget>
@@ -1345,9 +1387,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>Ms::ScoreView</class>
+   <class>Ms::ExampleView</class>
    <extends>QWidget</extends>
-   <header>scoreview.h</header>
+   <header>exampleview.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
@@ -1434,8 +1476,8 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="OnAboveLinesButtGroup"/>
   <buttongroup name="NumLettersButtGroup"/>
+  <buttongroup name="OnAboveLinesButtGroup"/>
   <buttongroup name="ContinuousBrokenLinesbuttGroup"/>
  </buttongroups>
 </ui>

@@ -33,7 +33,6 @@
 #include "bracket.h"
 #include "mscore.h"
 #include "barline.h"
-#include "lyrics.h"
 #include "system.h"
 #include "box.h"
 #include "chordrest.h"
@@ -130,10 +129,8 @@ void System::removeStaff(int idx)
       }
 
 //---------------------------------------------------------
-//   layout
+//   layoutSystem
 ///   Layout the System
-//    If first MeasureBase is a HBOX, then xo1 is the
-//    width of this box.
 //---------------------------------------------------------
 
 void System::layoutSystem(qreal xo1)
@@ -229,7 +226,6 @@ void System::layoutSystem(qreal xo1)
       //  layout  SysStaff and StaffLines
       //---------------------------------------------------
 
-      // xoff2 += xo1;
       _leftMargin = xoff2;
 
 
@@ -250,10 +246,10 @@ void System::layoutSystem(qreal xo1)
             ++nVisible;
             qreal staffMag = staff->mag();
             qreal h;
-            if (staff->lines() == 1)
+            if (staff->lines(0) == 1)
                   h = 2;
             else
-                  h = (staff->lines()-1) * staff->lineDistance();
+                  h = (staff->lines(0)-1) * staff->lineDistance(0);
             h = h * staffMag * spatium();
             s->bbox().setRect(_leftMargin + xo1, 0.0, 0.0, h);
             }
@@ -322,7 +318,6 @@ void System::layout2()
       int firstStaffIdx        = -1;
       int lastStaffIdx         = 0;
       int firstStaffInitialIdx = -1;
-      int lastStaffInitialIdx  = 0;
       Measure* fm              = firstMeasure();
 
       for (int i = 0; i < _staves.size(); ++i) {
@@ -337,7 +332,6 @@ void System::layout2()
                   if (fm && fm->visible(i)) {
                         if (firstStaffInitialIdx == -1)
                               firstStaffInitialIdx = i;
-                        lastStaffInitialIdx = i;
                         }
                   }
             else {
@@ -367,7 +361,7 @@ void System::layout2()
 
             qreal h = staff->height();
             if (ni == visibleStaves.end()) {
-                  ss->setYOff(staff->lines() == 1 ? _spatium * staff->mag() : 0.0);
+                  ss->setYOff(staff->lines(0) == 1 ? _spatium * staff->mag() : 0.0);
                   ss->bbox().setRect(_leftMargin, y, width() - _leftMargin, h);
                   break;
                   }
@@ -386,26 +380,33 @@ void System::layout2()
                         dist += staffDistance;
                         break;
                   }
+            dist += score()->staff(si2)->userDist();
 
             for (MeasureBase* mb : ml) {
                   if (!mb->isMeasure())
                         continue;
                   Measure* m = toMeasure(mb);
-                  Shape& s1 = m->shape(si1);
-                  Shape& s2 = m->shape(si2);
+                  Shape& s1 = m->staffShape(si1);
+                  Shape& s2 = m->staffShape(si2);
 
                   qreal d = s1.minVerticalDistance(s2) + minVerticalDistance;
                   dist    = qMax(dist, d);
 
-                  Spacer* sp = m->mstaff(si1)->_vspacerDown;
-                  if (sp)
-                        dist = qMax(dist, staff->height() + sp->gap());
-                  sp = m->mstaff(si2)->_vspacerUp;
+                  Spacer* sp = m->vspacerDown(si1);
+                  if (sp) {
+                        if (sp->spacerType() == SpacerType::FIXED) {
+                              dist = staff->height() + sp->gap();
+                              break;
+                              }
+                        else
+                              dist = qMax(dist, staff->height() + sp->gap());
+                        }
+                  sp = m->vspacerUp(si2);
                   if (sp)
                         dist = qMax(dist, sp->gap());
                   }
 
-            ss->setYOff(staff->lines() == 1 ? _spatium * staff->mag() : 0.0);
+            ss->setYOff(staff->lines(0) == 1 ? _spatium * staff->mag() : 0.0);
             ss->bbox().setRect(_leftMargin, y, width() - _leftMargin, h);
             y += dist;
             }
@@ -429,24 +430,6 @@ void System::layout2()
                   }
             else
                   qDebug("unhandled measure type %s", m->name());
-            }
-
-      if (fm) {
-            Segment* s        = fm->first();
-            BarLine* _barLine = s->isBeginBarLineType() ? toBarLine(s->element(0)) : 0;
-
-            if (_barLine) {
-                  _barLine->setTrack(firstStaffInitialIdx * VOICES);
-                  _barLine->setSpan(lastStaffInitialIdx - firstStaffInitialIdx + 1);
-                  if (score()->staff(firstStaffInitialIdx)->lines() == 1)
-                        _barLine->setSpanFrom(BARLINE_SPAN_1LINESTAFF_FROM);
-                  else
-                        _barLine->setSpanFrom(0);
-                  int llines = score()->staff(lastStaffInitialIdx)->lines();
-                  int spanTo = llines == 1 ? BARLINE_SPAN_1LINESTAFF_TO : (llines - 1) * 2;
-                  _barLine->setSpanTo(spanTo);
-                  _barLine->layout();
-                  }
             }
 
       //---------------------------------------------------
@@ -557,7 +540,7 @@ void System::setInstrumentNames(bool longName)
       if (!score()->showInstrumentNames()
               || (score()->styleB(StyleIdx::hideInstrumentNameIfOneInstrument) && score()->parts().size() == 1)) {
             for (SysStaff* staff : _staves) {
-                  foreach(InstrumentName* t, staff->instrumentNames)
+                  foreach (InstrumentName* t, staff->instrumentNames)
                         score()->removeElement(t);
                   }
             return;
@@ -571,7 +554,7 @@ void System::setInstrumentNames(bool longName)
       for (SysStaff* staff : _staves) {
             Staff* s = score()->staff(staffIdx);
             if (!s->isTop() || !s->show()) {
-                  foreach(InstrumentName* t, staff->instrumentNames)
+                  foreach (InstrumentName* t, staff->instrumentNames)
                         score()->removeElement(t);
                   ++staffIdx;
                   continue;
@@ -581,11 +564,11 @@ void System::setInstrumentNames(bool longName)
             const QList<StaffName>& names = longName? part->longNames(tick) : part->shortNames(tick);
 
             int idx = 0;
-            foreach(const StaffName& sn, names) {
+            foreach (const StaffName& sn, names) {
                   InstrumentName* iname = staff->instrumentNames.value(idx);
                   if (iname == 0) {
                         iname = new InstrumentName(score());
-                        iname->setGenerated(true);
+                        // iname->setGenerated(true);
                         iname->setParent(this);
                         iname->setTrack(staffIdx * VOICES);
                         iname->setInstrumentNameType(longName ? InstrumentNameType::LONG : InstrumentNameType::SHORT);
@@ -682,6 +665,7 @@ void System::add(Element* el)
             case Element::Type::TRILL_SEGMENT:
             case Element::Type::VOLTA_SEGMENT:
             case Element::Type::SLUR_SEGMENT:
+            case Element::Type::TIE_SEGMENT:
             case Element::Type::PEDAL_SEGMENT:
             case Element::Type::LYRICSLINE_SEGMENT:
             case Element::Type::GLISSANDO_SEGMENT:
@@ -745,6 +729,7 @@ void System::remove(Element* el)
             case Element::Type::TRILL_SEGMENT:
             case Element::Type::VOLTA_SEGMENT:
             case Element::Type::SLUR_SEGMENT:
+            case Element::Type::TIE_SEGMENT:
             case Element::Type::PEDAL_SEGMENT:
             case Element::Type::LYRICSLINE_SEGMENT:
             case Element::Type::GLISSANDO_SEGMENT:
@@ -811,7 +796,7 @@ int System::snapNote(int tick, const QPointF p, int staff) const
 Measure* System::firstMeasure() const
       {
       auto i = std::find_if(ml.begin(), ml.end(), [](MeasureBase* mb){return mb->isMeasure();});
-      return i != ml.end() ? static_cast<Measure*>(*i) : 0;
+      return i != ml.end() ? toMeasure(*i) : 0;
       }
 
 //---------------------------------------------------------
@@ -821,7 +806,7 @@ Measure* System::firstMeasure() const
 Measure* System::lastMeasure() const
       {
       auto i = std::find_if(ml.rbegin(), ml.rend(), [](MeasureBase* mb){return mb->isMeasure();});
-      return i != ml.rend() ? static_cast<Measure*>(*i) : 0;
+      return i != ml.rend() ? toMeasure(*i) : 0;
       }
 
 //---------------------------------------------------------
@@ -883,22 +868,20 @@ void System::scanElements(void* data, void (*func)(void*, Element*), bool all)
                   Element* se = spanner->startElement();
                   Element* ee = spanner->endElement();
                   bool v1 = true;
-                  if (se && (se->type() == Element::Type::CHORD || se->type() == Element::Type::REST)) {
-                        ChordRest* cr = static_cast<ChordRest*>(se);
+                  if (se && se->isChordRest()) {
+                        ChordRest* cr = toChordRest(se);
                         Measure* m    = cr->measure();
-                        MStaff* mstaff = m->mstaff(cr->staffIdx());
-                        v1 = mstaff->visible();
+                        v1            = m->visible(cr->staffIdx());
                         }
                   bool v2 = true;
-                  if (!v1 && ee && (ee->type() == Element::Type::CHORD || ee->type() == Element::Type::REST)) {
-                        ChordRest* cr = static_cast<ChordRest*>(ee);
+                  if (!v1 && ee && ee->isChordRest()) {
+                        ChordRest* cr = toChordRest(ee);
                         Measure* m    = cr->measure();
-                        MStaff* mstaff = m->mstaff(cr->staffIdx());
-                        v2 = mstaff->visible();
+                        v2            = m->visible(cr->staffIdx());
                         }
                   v = v1 || v2; // hide spanner if both chords are hidden
                   }
-            if (all || (score()->staff(staffIdx)->show() && _staves[staffIdx]->show() && v) || (spanner->type() == Element::Type::VOLTA))
+            if (all || (score()->staff(staffIdx)->show() && _staves[staffIdx]->show() && v) || spanner->isVolta())
                   ss->scanElements(data, func, all);
             }
       }
@@ -933,7 +916,7 @@ qreal System::staffCanvasYpage(int staffIdx) const
 //   write
 //---------------------------------------------------------
 
-void System::write(Xml& xml) const
+void System::write(XmlWriter& xml) const
       {
       xml.stag("System");
       if (_systemDividerLeft && _systemDividerLeft->isUserModified())
@@ -1008,13 +991,15 @@ Element* System::prevElement()
 
 qreal System::minDistance(System* s2) const
       {
-      const qreal systemFrameDistance = score()->styleP(StyleIdx::systemFrameDistance);
-      const qreal frameSystemDistance = score()->styleP(StyleIdx::frameSystemDistance);
+//      const qreal systemFrameDistance = score()->styleP(StyleIdx::systemFrameDistance);
+//      const qreal frameSystemDistance = score()->styleP(StyleIdx::frameSystemDistance);
 
       if (vbox() && !s2->vbox())
-            return qMax(frameSystemDistance, -s2->minTop());
+//            return qMax(frameSystemDistance, -s2->minTop());
+            return qMax(vbox()->bottomGap(), -s2->minTop());
       else if (!vbox() && s2->vbox())
-            return qMax(systemFrameDistance, -minBottom());
+//            return qMax(systemFrameDistance, -minBottom());
+            return qMax(s2->vbox()->topGap(), -minBottom());
       else if (vbox() && s2->vbox())
             return 0.0;
 
@@ -1022,46 +1007,55 @@ qreal System::minDistance(System* s2) const
       qreal dist                = score()->styleP(StyleIdx::minSystemDistance);
       int lastStaff             = _staves.size() - 1;
 
+      fixedDownDistance = false;
+
       for (MeasureBase* mb1 : ml) {
             if (mb1->isMeasure()) {
                   Measure* m = toMeasure(mb1);
-                  Q_ASSERT(!m->mstaves().empty());
-                  Spacer* sp = m->mstaves().back()->_vspacerDown;
-                  if (sp)
-                        dist = qMax(dist, sp->gap());
+                  Spacer* sp = m->vspacerDown(m->score()->nstaves()-1);
+                  if (sp) {
+                        if (sp->spacerType() == SpacerType::FIXED) {
+                              dist = sp->gap();
+                              fixedDownDistance = true;
+                              break;
+                              }
+                        else
+                              dist = qMax(dist, sp->gap());
+                        }
                   }
             }
-      for (MeasureBase* mb2 : s2->ml) {
-            if (mb2->isMeasure()) {
-                  Measure* m = toMeasure(mb2);
-                  Q_ASSERT(!m->mstaves().empty());
-                  Spacer* sp = m->mstaves().front()->_vspacerUp;
-                  if (sp)
-                        dist = qMax(dist, sp->gap());
+      if (!fixedDownDistance) {
+            for (MeasureBase* mb2 : s2->ml) {
+                  if (mb2->isMeasure()) {
+                        Measure* m = toMeasure(mb2);
+                        Spacer* sp = m->vspacerUp(0);
+                        if (sp)
+                              dist = qMax(dist, sp->gap());
+                        }
                   }
-            }
 
-      for (MeasureBase* mb1 : ml) {
-            if (!mb1->isMeasure())
-                  continue;
-            Measure* m1 = toMeasure(mb1);
-            qreal bx1 = m1->x();
-            qreal bx2 = m1->x() + m1->width();
+            for (MeasureBase* mb1 : ml) {
+                  if (!mb1->isMeasure())
+                        continue;
+                  Measure* m1 = toMeasure(mb1);
+                  qreal bx1 = m1->x();
+                  qreal bx2 = m1->x() + m1->width();
 
-            for (MeasureBase* mb2 : s2->measures()) {
-                  if (!mb2->isMeasure())
-                        continue;
-                  Measure* m2 = toMeasure(mb2);
-                  qreal ax1 = mb2->x();
-                  if (ax1 >= bx2)
-                        break;
-                  qreal ax2 = mb2->x() + mb2->width();
-                  if (ax2 < bx1)
-                        continue;
-                  Shape s1 = m1->shape(lastStaff).translated(m1->pos());
-                  Shape s2 = m2->shape(0).translated(m2->pos());
-                  qreal d  = s1.minVerticalDistance(s2) + minVerticalDistance;
-                  dist = qMax(dist, d - m1->mstaff(lastStaff)->lines->height());
+                  for (MeasureBase* mb2 : s2->measures()) {
+                        if (!mb2->isMeasure())
+                              continue;
+                        Measure* m2 = toMeasure(mb2);
+                        qreal ax1 = mb2->x();
+                        if (ax1 >= bx2)
+                              break;
+                        qreal ax2 = mb2->x() + mb2->width();
+                        if (ax2 < bx1)
+                              continue;
+                        Shape s1 = m1->staffShape(lastStaff).translated(m1->pos());
+                        Shape s2 = m2->staffShape(0).translated(m2->pos());
+                        qreal d  = s1.minVerticalDistance(s2) + minVerticalDistance;
+                        dist = qMax(dist, d - m1->staffLines(lastStaff)->height());
+                        }
                   }
             }
       return dist;
@@ -1079,7 +1073,7 @@ qreal System::topDistance(int staffIdx, const Shape& s) const
             if (!mb1->isMeasure())
                   continue;
             Measure* m1 = toMeasure(mb1);
-            dist = qMax(dist, s.minVerticalDistance(m1->shape(staffIdx).translated(m1->pos())));
+            dist = qMax(dist, s.minVerticalDistance(m1->staffShape(staffIdx).translated(m1->pos())));
             }
       return dist;
       }
@@ -1095,7 +1089,7 @@ qreal System::bottomDistance(int staffIdx, const Shape& s) const
             if (!mb1->isMeasure())
                   continue;
             Measure* m1 = toMeasure(mb1);
-            dist = qMax(dist, m1->shape(staffIdx).translated(m1->pos()).minVerticalDistance(s));
+            dist = qMax(dist, m1->staffShape(staffIdx).translated(m1->pos()).minVerticalDistance(s));
             }
       return dist;
       }
@@ -1133,27 +1127,6 @@ qreal System::minBottom() const
                   dist = qMax(dist, s->staffShape(staffIdx).bottom());
             }
       return dist - spatium() * 4;
-      }
-
-//-------------------------------------------------------------------
-//   removeGeneratedElements (System Header + TimeSig Announce)
-//    helper function
-//-------------------------------------------------------------------
-
-void System::removeGeneratedElements()
-      {
-      auto fm = std::find_if(ml.begin(), ml.end(), [](MeasureBase* mb){return mb->isMeasure();});
-      auto lm = std::find_if(ml.rbegin(), ml.rend(), [](MeasureBase* mb){return mb->isMeasure();});
-
-      for (auto im = fm; im != ml.end(); ++im) {
-            if (!(*im)->isMeasure())
-                  continue;
-            Measure* m = toMeasure(*im);
-            if (m != *fm && m->hasSystemHeader())
-                  m->removeSystemHeader();
-            if (m != *lm && m->hasSystemTrailer())
-                  m->removeSystemTrailer();
-            }
       }
 
 //---------------------------------------------------------

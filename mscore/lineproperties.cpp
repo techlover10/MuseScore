@@ -22,6 +22,7 @@
 #include "preferences.h"
 #include "libmscore/sym.h"
 #include "libmscore/text.h"
+#include "musescore.h"
 
 namespace Ms {
 
@@ -46,34 +47,37 @@ static void setTextPlace(PlaceText place, QComboBox* cb)
 //   LineProperties
 //---------------------------------------------------------
 
-LineProperties::LineProperties(TextLine* l, QWidget* parent)
+LineProperties::LineProperties(TextLineBase* l, QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("LineProperties");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
-      otl = l;
-      tl  = l->clone();
 
-      beginText->setText(Text::unEscape(otl->beginText()));
-      continueText->setText(Text::unEscape(otl->continueText()));
-      endText->setText(Text::unEscape(otl->endText()));
+      tl  = l;
 
-      setTextPlace(otl->beginTextPlace(),    beginTextPlace);
-      setTextPlace(otl->continueTextPlace(), continueTextPlace);
-      setTextPlace(otl->endTextPlace(),      endTextPlace);
+      beginText->setText(Text::unEscape(tl->beginText()));
+      continueText->setText(Text::unEscape(tl->continueText()));
+      endText->setText(Text::unEscape(tl->endText()));
 
-      beginHook->setChecked(otl->beginHook());
-      endHook->setChecked(otl->endHook());
-      beginHookHeight->setValue(otl->beginHookHeight().val());
-      endHookHeight->setValue(otl->endHookHeight().val());
-      beginHookType90->setChecked(otl->beginHookType() == HookType::HOOK_90);
-      beginHookType45->setChecked(otl->beginHookType() == HookType::HOOK_45);
-      endHookType90->setChecked(otl->endHookType() == HookType::HOOK_90);
-      endHookType45->setChecked(otl->endHookType() == HookType::HOOK_45);
+      setTextPlace(tl->beginTextPlace(),    beginTextPlace);
+      setTextPlace(tl->continueTextPlace(), continueTextPlace);
+      setTextPlace(tl->endTextPlace(),      endTextPlace);
+
+      beginHook->setChecked(tl->beginHook());
+      endHook->setChecked(tl->endHook());
+      beginHookHeight->setValue(tl->beginHookHeight().val());
+      endHookHeight->setValue(tl->endHookHeight().val());
+      beginHookType90->setChecked(tl->beginHookType() == HookType::HOOK_90);
+      beginHookType45->setChecked(tl->beginHookType() == HookType::HOOK_45);
+      endHookType90->setChecked(tl->endHookType() == HookType::HOOK_90);
+      endHookType45->setChecked(tl->endHookType() == HookType::HOOK_45);
 
       connect(beginTextTb, SIGNAL(clicked()),    SLOT(beginTextProperties()));
       connect(continueTextTb, SIGNAL(clicked()), SLOT(continueTextProperties()));
       connect(endTextTb, SIGNAL(clicked()),      SLOT(endTextProperties()));
+
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -82,7 +86,6 @@ LineProperties::LineProperties(TextLine* l, QWidget* parent)
 
 LineProperties::~LineProperties()
       {
-      delete tl;
       }
 
 //---------------------------------------------------------
@@ -106,71 +109,71 @@ static PlaceText getPlaceText(QComboBox* cb)
 
 void LineProperties::accept()
       {
-      if (beginHook->isChecked() != otl->beginHook())
-            otl->undoChangeProperty(P_ID::BEGIN_HOOK, beginHook->isChecked());
-      if (endHook->isChecked() != otl->endHook())
-            otl->undoChangeProperty(P_ID::END_HOOK, endHook->isChecked());
+      if (beginHook->isChecked() != tl->beginHook())
+            tl->undoChangeProperty(P_ID::BEGIN_HOOK, beginHook->isChecked());
+      if (endHook->isChecked() != tl->endHook())
+            tl->undoChangeProperty(P_ID::END_HOOK, endHook->isChecked());
 
       HookType ht = beginHookType90->isChecked() ? HookType::HOOK_90 : HookType::HOOK_45;
-      if (ht != otl->beginHookType())
-            otl->undoChangeProperty(P_ID::BEGIN_HOOK_TYPE, int(ht));
+      if (ht != tl->beginHookType())
+            tl->undoChangeProperty(P_ID::BEGIN_HOOK_TYPE, int(ht));
       ht = endHookType90->isChecked() ? HookType::HOOK_90 : HookType::HOOK_45;
-      if (ht != otl->endHookType())
-            otl->undoChangeProperty(P_ID::END_HOOK_TYPE, int(ht));
+      if (ht != tl->endHookType())
+            tl->undoChangeProperty(P_ID::END_HOOK_TYPE, int(ht));
 
       Spatium val = Spatium(beginHookHeight->value());
-      if (val != otl->beginHookHeight())
-            otl->undoChangeProperty(P_ID::BEGIN_HOOK_HEIGHT, QVariant(double(val.val())));
+      if (val != tl->beginHookHeight())
+            tl->undoChangeProperty(P_ID::BEGIN_HOOK_HEIGHT, QVariant(double(val.val())));
       val = Spatium(endHookHeight->value());
-      if (val != otl->endHookHeight())
-            otl->undoChangeProperty(P_ID::END_HOOK_HEIGHT, QVariant(double(val.val())));
+      if (val != tl->endHookHeight())
+            tl->undoChangeProperty(P_ID::END_HOOK_HEIGHT, QVariant(double(val.val())));
 
       PlaceText pt = getPlaceText(beginTextPlace);
-      if (pt != otl->beginTextPlace()) {
-            qDebug("change ottava, links %p", otl->links());
-            otl->undoChangeProperty(P_ID::BEGIN_TEXT_PLACE, int(pt));
+      if (pt != tl->beginTextPlace()) {
+            qDebug("change ottava, links %p", tl->links());
+            tl->undoChangeProperty(P_ID::BEGIN_TEXT_PLACE, int(pt));
             }
       pt = getPlaceText(continueTextPlace);
-      if (pt != otl->continueTextPlace())
-            otl->undoChangeProperty(P_ID::CONTINUE_TEXT_PLACE, int(pt));
+      if (pt != tl->continueTextPlace())
+            tl->undoChangeProperty(P_ID::CONTINUE_TEXT_PLACE, int(pt));
       pt = getPlaceText(endTextPlace);
-      if (pt != otl->endTextPlace())
-            otl->undoChangeProperty(P_ID::END_TEXT_PLACE, int(pt));
+      if (pt != tl->endTextPlace())
+            tl->undoChangeProperty(P_ID::END_TEXT_PLACE, int(pt));
 
-      if (beginText->text() != otl->beginText())
-            otl->undoChangeProperty(P_ID::BEGIN_TEXT, Text::tagEscape(beginText->text()));
-      else if (otl->beginText().isEmpty())
-            otl->setBeginText("");
-      if (continueText->text() != otl->continueText())
-            otl->undoChangeProperty(P_ID::CONTINUE_TEXT, Text::tagEscape(continueText->text()));
-      else if (otl->continueText().isEmpty())
-            otl->setContinueText("");
-      if (endText->text() != otl->endText())
-            otl->undoChangeProperty(P_ID::END_TEXT, Text::tagEscape(endText->text()));
-      else if (otl->endText().isEmpty())
-            otl->setEndText("");
+      if (beginText->text() != tl->beginText())
+            tl->undoChangeProperty(P_ID::BEGIN_TEXT, Text::tagEscape(beginText->text()));
+      else if (tl->beginText().isEmpty())
+            tl->setBeginText("");
+      if (continueText->text() != tl->continueText())
+            tl->undoChangeProperty(P_ID::CONTINUE_TEXT, Text::tagEscape(continueText->text()));
+      else if (tl->continueText().isEmpty())
+            tl->setContinueText("");
+      if (endText->text() != tl->endText())
+            tl->undoChangeProperty(P_ID::END_TEXT, Text::tagEscape(endText->text()));
+      else if (tl->endText().isEmpty())
+            tl->setEndText("");
 
-      if (otl->beginTextElement()) {
+      if (tl->beginTextElement()) {
             Text* t  = tl->beginTextElement();
-            Text* ot = otl->beginTextElement();
+            Text* ot = tl->beginTextElement();
             if (t) {
                   ot->undoChangeProperty(P_ID::TEXT_STYLE_TYPE, int(t->textStyleType()));
                   ot->undoChangeProperty(P_ID::TEXT_STYLE, QVariant::fromValue(t->textStyle()));
                   }
             }
 
-      if (otl->continueTextElement()) {
+      if (tl->continueTextElement()) {
             Text* t  = tl->continueTextElement();
-            Text* ot = otl->continueTextElement();
+            Text* ot = tl->continueTextElement();
             if (t) {
                   ot->undoChangeProperty(P_ID::TEXT_STYLE_TYPE, int(t->textStyleType()));
                   ot->undoChangeProperty(P_ID::TEXT_STYLE, QVariant::fromValue(t->textStyle()));
                   }
             }
 
-      if (otl->endTextElement()) {
+      if (tl->endTextElement()) {
             Text* t  = tl->endTextElement();
-            Text* ot = otl->endTextElement();
+            Text* ot = tl->endTextElement();
             if (t) {
                   ot->undoChangeProperty(P_ID::TEXT_STYLE_TYPE, int(t->textStyleType()));
                   ot->undoChangeProperty(P_ID::TEXT_STYLE, QVariant::fromValue(t->textStyle()));
@@ -212,6 +215,16 @@ void LineProperties::endTextProperties()
       tl->createEndTextElement();
       TextProperties t(tl->endTextElement(), this);
       t.exec();
+      }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void LineProperties::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QDialog::hideEvent(event);
       }
 }
 

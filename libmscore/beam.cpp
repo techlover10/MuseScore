@@ -203,16 +203,30 @@ void Beam::removeChordRest(ChordRest* a)
 
 void Beam::draw(QPainter* painter) const
       {
+      if (beamSegments.empty())
+            return;
       painter->setBrush(QBrush(curColor()));
       painter->setPen(Qt::NoPen);
       qreal lw2 = score()->styleP(StyleIdx::beamWidth) * .5 * mag();
+
+      // make beam thickness independent of slant
+      // (expression can be simplified?)
+
+      const QLineF* bs = beamSegments.front();
+      double d  = (qAbs(bs->y2() - bs->y1())) / (bs->x2() - bs->x1());
+      if (beamSegments.size() > 1 && d > M_PI/6.0)
+            d = M_PI/6.0;
+      double ww = lw2 / sin(M_PI_2 - atan(d));
+
       for (const QLineF* bs : beamSegments) {
-            QPolygonF pg;
-               pg << QPointF(bs->x1(), bs->y1()-lw2)
-                  << QPointF(bs->x2(), bs->y2()-lw2)
-                  << QPointF(bs->x2(), bs->y2()+lw2)
-                  << QPointF(bs->x1(), bs->y1()+lw2);
-            painter->drawPolygon(pg, Qt::OddEvenFill);
+            painter->drawPolygon(
+               QPolygonF({
+                  QPointF(bs->x1(), bs->y1() - ww),
+                  QPointF(bs->x2(), bs->y2() - ww),
+                  QPointF(bs->x2(), bs->y2() + ww),
+                  QPointF(bs->x1(), bs->y1() + ww),
+                  }),
+            Qt::OddEvenFill);
             }
       }
 
@@ -246,7 +260,7 @@ bool Beam::twoBeamedNotes()
       if (c1->notes().size() != 1 || c2->notes().size() != 1)
             return false;
 
-      int upDnLimit = staff()->lines() - 1;           // was '4' hard-coded in the next 2 lines
+      int upDnLimit = staff()->lines(0) - 1;           // was '4' hard-coded in the next 2 lines
       int dist1     = c1->upLine() - upDnLimit;
       int dist2     = c2->upLine() - upDnLimit;
       if ((dist1 == -dist2) || (-dist1 == dist2)) {
@@ -286,11 +300,11 @@ void Beam::layout1()
       Chord* c2 = 0;
 
       // TAB's with stem beside staves have special layout
-      if (staff()->isTabStaff() && !staff()->staffType()->stemThrough()) {
+      if (staff()->isTabStaff(0) && !staff()->staffType(0)->stemThrough()) {
             //TABULATURES: all beams (and related chords) are:
             //    UP or DOWN according to TAB duration position
             //    slope 0
-            _up   = !staff()->staffType()->stemsDown();
+            _up   = !staff()->staffType(0)->stemsDown();
             slope   = 0.0;
             _cross  = false;
             minMove = maxMove = 0;              // no cross-beaming in TAB's!
@@ -305,7 +319,7 @@ void Beam::layout1()
                         }
                   }
             }
-      else if (staff()->isDrumStaff()) {
+      else if (staff()->isDrumStaff(0)) {
             if (_direction != Direction::AUTO)
                   _up = _direction == Direction::UP;
             else {
@@ -329,7 +343,7 @@ void Beam::layout1()
 
             int mUp     = 0;
             int mDown   = 0;
-            int upDnLimit = staff()->lines() - 1;           // was '4' hard-coded in following code
+            int upDnLimit = staff()->lines(0) - 1;           // was '4' hard-coded in following code
 
             int staffIdx = -1;
             for (ChordRest* cr : _elements) {
@@ -445,11 +459,11 @@ void Beam::layoutGraceNotes()
       //
       // determine beam stem direction
       //
-      if (staff()->isTabStaff()) {
+      if (staff()->isTabStaff(0)) {
             //TABULATURES: all beams (and related chords) are:
             //    UP or DOWN according to TAB duration position
             //    slope 0
-            _up   = !staff()->staffType()->stemsDown();
+            _up   = !staff()->staffType(0)->stemsDown();
             }
       else {
             if (_direction != Direction::AUTO)
@@ -1115,7 +1129,7 @@ static int adjust(qreal _spatium4, int slant, const std::vector<ChordRest*>& cl)
       // on tab staff, reduce a bit the stems (value 4 is experimental)
       // TODO : proper fix should adapt all the numeric vaues used in Beam::computeStemLen() below
       // to variable line distance
-      if (c1->staff() && c1->staff()->isTabStaff()) {
+      if (c1->staff() && c1->staff()->isTabStaff(0)) {
             ml = (ml != 0) ? ml - 4 : 0;
             return ml;
             }
@@ -1196,7 +1210,7 @@ void Beam::computeStemLen(const std::vector<ChordRest*>& cl, qreal& py1, int bea
       qreal _spatium      = spatium();
       qreal _spatium4     = _spatium * .25;
       // TAB: scale to staff line distance for vert. pos. within a staff
-      qreal _spStaff4     = staff()->isTabStaff() ? _spatium4 * staff()->lineDistance() : _spatium4;
+      qreal _spStaff4     = staff()->isTabStaff(0) ? _spatium4 * staff()->lineDistance(0) : _spatium4;
       const ChordRest* c1 = cl.front();
       const ChordRest* c2 = cl.back();
       qreal dx            = c2->pagePos().x() - c1->pagePos().x();
@@ -1539,9 +1553,9 @@ void Beam::layout2(std::vector<ChordRest*>crl, SpannerSegmentType, int frag)
       int n = crl.size();
 
       StaffType* tab = 0;
-      if (staff()->isTabStaff() )
-            tab = staff()->staffType();
-      if (tab && !tab->stemThrough() ) {
+      if (staff()->isTabStaff(0) )
+            tab = staff()->staffType(0);
+      if (tab && !tab->stemThrough()) {
             //
             // TAB STAVES with stems beside staves: beam position is fixed depending on TAB parameters and chordrest up/down
             // (all the chordrests of a beam have the same up/down, as it depends on TAB parameters if there are no voices
@@ -1800,9 +1814,9 @@ void Beam::layout2(std::vector<ChordRest*>crl, SpannerSegmentType, int frag)
                               ;
                         else if (c1 == n - 1)
                               len = -len;
-                        else if (tuplet && cr1 == tuplet->elements().first())
+                        else if (tuplet && cr1 == tuplet->elements().front())
                               ;
-                        else if (tuplet && cr1 == tuplet->elements().last())
+                        else if (tuplet && cr1 == tuplet->elements().back())
                               len = -len;
                         else if (b32 || b64)          // end of a sub-beam group
                               len = -len;
@@ -1998,7 +2012,7 @@ void Beam::spatiumChanged(qreal oldValue, qreal newValue)
 //   write
 //---------------------------------------------------------
 
-void Beam::write(Xml& xml) const
+void Beam::write(XmlWriter& xml) const
       {
       if (_elements.empty())
             return;
@@ -2116,8 +2130,10 @@ void Beam::editDrag(const EditData& ed)
       f->py2[idx] += dy;
       _userModified[idx] = true;
       setGenerated(false);
-      if (_elements.front()->isGrace())
+      if (_elements.front()->isGrace()) {
             layoutGraceNotes();
+            score()->rebuildBspTree(); // ledger lines might be deleted. See #138256
+            }
       else
             layout1();
       layout();
@@ -2141,24 +2157,25 @@ void Beam::updateGrips(Grip* defaultGrip, QVector<QRectF>& grip) const
       int idx = (_direction == Direction::AUTO || _direction == Direction::DOWN) ? 0 : 1;
       BeamFragment* f = fragments[editFragment];
 
-      Chord* c1 = nullptr;
-      Chord* c2 = nullptr;
+      ChordRest* c1 = nullptr;
+      ChordRest* c2 = nullptr;
       int n = _elements.size();
       for (int i = 0; i < n; ++i) {
-            if (_elements[i]->type() == Element::Type::CHORD) {
-                  c1 = static_cast<Chord*>(_elements[i]);
+            if (_elements[i]->isChordRest()) {
+                  c1 = static_cast<ChordRest*>(_elements[i]);
                   break;
                   }
             }
       for (int i = n-1; i >= 0; --i) {
-            if (_elements[i]->type() == Element::Type::CHORD) {
-                  c2 = static_cast<Chord*>(_elements[i]);
+            if (_elements[i]->isChordRest()) {
+                  c2 = static_cast<ChordRest*>(_elements[i]);
                   break;
                   }
             }
+
       int y = pagePos().y();
-      grip[0].translate(QPointF(c1->stemPosX()+c1->pageX(), f->py1[idx] + y));
-      grip[1].translate(QPointF(c2->stemPosX()+c2->pageX(), f->py2[idx] + y));
+      grip[0].translate(QPointF(c1->stemPosX() + c1->pageX(), f->py1[idx] + y));
+      grip[1].translate(QPointF(c2->stemPosX() + c2->pageX(), f->py2[idx] + y));
       }
 
 //---------------------------------------------------------
@@ -2469,5 +2486,21 @@ Shape Beam::shape() const
       shape.add(bbox());
       return shape;
       }
+
+//---------------------------------------------------------
+//   getPropertyStyle
+//---------------------------------------------------------
+
+StyleIdx Beam::getPropertyStyle(P_ID id) const
+      {
+      switch (id) {
+            case P_ID::BEAM_NO_SLOPE:
+                  return StyleIdx::beamNoSlope;
+            default:
+                  break;
+            }
+      return StyleIdx::NOSTYLE;
+      }
+
 }
 

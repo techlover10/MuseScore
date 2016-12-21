@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<museScore version="2.06">
+<museScore version="3.00">
   <Score>
     <LayerTag id="0" tag="default"></LayerTag>
     <currentLayer>0</currentLayer>
@@ -139,19 +139,19 @@
           </Text>
         </VBox>
       <Measure number="1">
-        <Clef>
-          <concertClefType>G</concertClefType>
-          <transposingClefType>G</transposingClefType>
-          </Clef>
         <TimeSig>
           <sigN>2</sigN>
           <sigD>4</sigD>
           <showCourtesySig>1</showCourtesySig>
           </TimeSig>
+        <Clef>
+          <concertClefType>G</concertClefType>
+          <transposingClefType>G</transposingClefType>
+          </Clef>
         <Rest>
           <lid>179</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="2">
@@ -202,7 +202,7 @@
         <Rest>
           <lid>5</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="5">
@@ -228,93 +228,93 @@
       </Staff>
     <Staff id="2">
       <Measure number="1">
-        <Clef>
-          <concertClefType>F</concertClefType>
-          <transposingClefType>F</transposingClefType>
-          </Clef>
         <TimeSig>
           <sigN>2</sigN>
           <sigD>4</sigD>
           <showCourtesySig>1</showCourtesySig>
           </TimeSig>
+        <Clef>
+          <concertClefType>F</concertClefType>
+          <transposingClefType>F</transposingClefType>
+          </Clef>
         <Rest>
           <lid>180</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="2">
         <Rest>
           <lid>3</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="3">
         <Rest>
           <lid>4</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="4">
         <Rest>
           <lid>6</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="5">
         <Rest>
           <lid>7</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       </Staff>
     <Staff id="3">
       <Measure number="1">
-        <Clef>
-          <concertClefType>G</concertClefType>
-          <transposingClefType>G</transposingClefType>
-          </Clef>
         <TimeSig>
           <sigN>2</sigN>
           <sigD>4</sigD>
           <showCourtesySig>1</showCourtesySig>
           </TimeSig>
+        <Clef>
+          <concertClefType>G</concertClefType>
+          <transposingClefType>G</transposingClefType>
+          </Clef>
         <Rest>
           <lid>181</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="2">
         <Rest>
           <lid>9</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="3">
         <Rest>
           <lid>10</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="4">
         <Rest>
           <lid>11</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       <Measure number="5">
         <Rest>
           <lid>12</lid>
           <durationType>measure</durationType>
-          <duration z="2" n="4"/>
+          <duration>2/4</duration>
           </Rest>
         </Measure>
       </Staff>
@@ -423,19 +423,19 @@
             </Text>
           </VBox>
         <Measure number="1">
-          <Clef>
-            <concertClefType>G</concertClefType>
-            <transposingClefType>G</transposingClefType>
-            </Clef>
           <TimeSig>
             <sigN>2</sigN>
             <sigD>4</sigD>
             <showCourtesySig>1</showCourtesySig>
             </TimeSig>
+          <Clef>
+            <concertClefType>G</concertClefType>
+            <transposingClefType>G</transposingClefType>
+            </Clef>
           <Rest>
             <lid>179</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="2">
@@ -487,7 +487,7 @@
           <Rest>
             <lid>5</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="5">
@@ -513,47 +513,47 @@
         </Staff>
       <Staff id="2">
         <Measure number="1">
-          <Clef>
-            <concertClefType>G</concertClefType>
-            <transposingClefType>G</transposingClefType>
-            </Clef>
           <TimeSig>
             <sigN>2</sigN>
             <sigD>4</sigD>
             <showCourtesySig>1</showCourtesySig>
             </TimeSig>
+          <Clef>
+            <concertClefType>G</concertClefType>
+            <transposingClefType>G</transposingClefType>
+            </Clef>
           <Rest>
             <lid>180</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="2">
           <Rest>
             <lid>3</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="3">
           <Rest>
             <lid>4</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="4">
           <Rest>
             <lid>6</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="5">
           <Rest>
             <lid>7</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         </Staff>
@@ -655,66 +655,65 @@
             </Text>
           </VBox>
         <Measure number="1">
-          <Clef>
-            <concertClefType>G</concertClefType>
-            <transposingClefType>G</transposingClefType>
-            </Clef>
           <TimeSig>
             <sigN>2</sigN>
             <sigD>4</sigD>
             <showCourtesySig>1</showCourtesySig>
             </TimeSig>
+          <Clef>
+            <concertClefType>G</concertClefType>
+            <transposingClefType>G</transposingClefType>
+            </Clef>
           <Rest>
             <lid>181</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="2">
           <breakMultiMeasureRest>1</breakMultiMeasureRest>
           <Tempo>
             <tempo>1.66667</tempo>
-            <lid>178</lid>
+            <lid>25</lid>
             <text>𝅘𝅥 = 100</text>
             </Tempo>
           <Rest>
             <lid>9</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="2" len="8/4">
           <multiMeasureRest>4</multiMeasureRest>
           <Tempo>
             <tempo>1.66667</tempo>
-            <lid>178</lid>
+            <lid>25</lid>
             <text>𝅘𝅥 = 100</text>
             </Tempo>
           <Rest>
             <durationType>measure</durationType>
-            <duration z="8" n="4"/>
+            <duration>8/4</duration>
             </Rest>
           </Measure>
-        <tick>1920</tick>
         <Measure number="3">
           <Rest>
             <lid>10</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="4">
           <Rest>
             <lid>11</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         <Measure number="5">
           <Rest>
             <lid>12</lid>
             <durationType>measure</durationType>
-            <duration z="2" n="4"/>
+            <duration>2/4</duration>
             </Rest>
           </Measure>
         </Staff>

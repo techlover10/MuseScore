@@ -44,6 +44,7 @@
 #include "libmscore/tremolobar.h"
 #include "libmscore/segment.h"
 #include "libmscore/rehearsalmark.h"
+#include "libmscore/repeat.h"
 #include "libmscore/dynamic.h"
 #include "libmscore/arpeggio.h"
 #include "libmscore/volta.h"
@@ -54,6 +55,7 @@
 #include "libmscore/ottava.h"
 #include "libmscore/marker.h"
 #include "libmscore/notedot.h"
+#include "libmscore/sym.h"
 #include "preferences.h"
 
 namespace Ms {
@@ -400,6 +402,10 @@ void GuitarPro6::readTracks(QDomNode* track)
                               int midiPort = currentNode.firstChildElement("Port").text().toInt();
                               int midiChannel = currentNode.firstChildElement("PrimaryChannel").text().toInt();
                               part->setMidiChannel(midiChannel, midiPort);
+                              if (midiChannel == GP_DEFAULT_PERCUSSION_CHANNEL) {
+                                    part->instrument()->setDrumset(gpDrumset);
+                                    s->setStaffType(0, StaffType::preset(StaffTypes::PERC_DEFAULT));
+                                    }
                               }
                         }
                   else if (nodeName == "PlaybackState") {}
@@ -594,121 +600,59 @@ Fraction GuitarPro6::rhythmToDuration(QString value)
 
 void GuitarPro6::readDrumNote(Note* note, int element, int variation)
       {
-      int octaveInt = 0;
-      int toneInt = 0;
+      int pitch = 44;
       /* These numbers below were determined by creating all drum
        * notes in a GPX format file and then analyzing the score.gpif
-       * file which specifies the score. */
-      if (element == 11 && variation == 0) {
-            octaveInt = 5;
-            toneInt = 0;
-            note->setHeadGroup(NoteHead::Group::HEAD_CROSS);
-      }
-      else if (element == 0 && variation == 0) {
-            octaveInt = 5;
-            toneInt = 5;
-      }
-      else if (element == 5 && variation == 0) {
-            octaveInt = 5;
-            toneInt = 7;
-      }
-      else if (element == 6 && variation == 0) {
-            octaveInt = 5;
-            toneInt = 9;
-      }
-      else if (element == 7 && variation == 0) {
-            octaveInt = 5;
-            toneInt = 11;
-      }
-      else if (element == 1 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 0;
-      }
-      else if (element == 1 && variation == 1) {
-            octaveInt = 6;
-            toneInt = 0;
-            note->setHeadGroup(NoteHead::Group::HEAD_MI);
-      }
-      else if (element == 1 && variation == 2) {
-            octaveInt = 6;
-            toneInt = 0;
-            note->setHeadGroup(NoteHead::Group::HEAD_CROSS);
-      }
-      else if (element == 8 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 2;
-      }
-      else if (element == 9 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 4;
-      }
-      else if (element == 2 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 4;
-            note->setHeadGroup(NoteHead::Group::HEAD_TRIANGLE);
-      }
-      else if (element == 15 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 5;
-            note->setHeadGroup(NoteHead::Group::HEAD_CROSS);
-      }
-      else if (element == 15 && variation == 1) {
-            octaveInt = 6;
-            toneInt = 5;
-            note->setHeadGroup(NoteHead::Group::HEAD_DIAMOND);
-      }
-      else if (element == 15 && variation == 2) {
-            octaveInt = 6;
-            toneInt = 5;
-            note->setHeadGroup(NoteHead::Group::HEAD_MI);
-      }
-      else if (element == 3 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 5;
-            note->setHeadGroup(NoteHead::Group::HEAD_TRIANGLE);
-      }
-      else if (element == 10 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 7;
-            note->setHeadGroup(NoteHead::Group::HEAD_CROSS);
-      }
-      else if (element == 10 && variation == 1) {
-            octaveInt = 6;
-            toneInt = 7;
-            note->setHeadGroup(NoteHead::Group::HEAD_SLASH);
-      }
-      else if (element == 10 && variation == 2) {
-            octaveInt = 6;
-            toneInt = 7;
-            note->setHeadGroup(NoteHead::Group::HEAD_XCIRCLE);
-      }
-      else if (element == 12 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 7;
-            note->setHeadGroup(NoteHead::Group::HEAD_CROSS);
-      }
-      else if (element == 4 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 7;
-            note->setHeadGroup(NoteHead::Group::HEAD_TRIANGLE);
-      }
-      else if (element == 14 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 9;
-            note->setHeadGroup(NoteHead::Group::HEAD_CROSS);
-      }
-      else if (element == 13 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 9;
-            note->setHeadGroup(NoteHead::Group::HEAD_LA);
-      }
-      else if (element == 16 && variation == 0) {
-            octaveInt = 6;
-            toneInt = 11;
-            note->setHeadGroup(NoteHead::Group::HEAD_NORMAL);
-      }
-      // multiply octaves by 12 as 12 semitones in octave
-      note->setPitch((octaveInt * 12) + toneInt);
+       * file which specifies the score and then matching as much
+       * as possible with the gpDrumset...   */
+      if (element == 11 && variation == 0)  // pedal hihat
+            pitch = 44;
+      else if (element == 0 && variation == 0) // Kick (hit)
+            pitch = 35; // or 36
+      else if (element == 5 && variation == 0) // Tom very low (hit)
+            pitch = 41;
+      else if (element == 6 && variation == 0) // Tom low (hit)
+            pitch = 43;
+      else if (element == 7 && variation == 0) // Tom medium (hit)
+            pitch = 45;
+      else if (element == 1 && variation == 0) // Snare (hit)
+            pitch = 38; //or 40
+      else if (element == 1 && variation == 1) // Snare (rim shot)
+            pitch = 37;
+      else if (element == 1 && variation == 2) // Snare (side stick)
+            pitch = 37;
+      else if (element == 8 && variation == 0) // Tom high (hit)
+            pitch = 48;
+      else if (element == 9 && variation == 0) // Tom very high (hit)
+            pitch = 50;
+      else if (element == 15 && variation == 0) // Ride (middle)
+            pitch = 51;
+      else if (element == 15 && variation == 1) // Ride (edge)
+            pitch = 59;
+      else if (element == 15 && variation == 2) // Ride (bell)
+            pitch = 59;
+      else if (element == 10 && variation == 0) // Hihat (closed)
+            pitch = 42;
+      else if (element == 10 && variation == 1) // Hihat (half)
+            pitch = 46;
+      else if (element == 10 && variation == 2) // Hihat (open)
+            pitch = 46;
+      else if (element == 12 && variation == 0) // Crash medium (hit)
+            pitch = 49;
+      else if (element == 14 && variation == 0) // Splash (hit)
+            pitch = 55;
+      else if (element == 13 && variation == 0) // Crash high (hit)
+            pitch = 57;
+      else if (element == 16 && variation == 0) // China (hit)
+            pitch = 52;
+      else if (element == 4 && variation == 0) // Cowbell high (hit)
+            pitch = 56;
+      else if (element == 3 && variation == 0) // Cowbell medium (hit)
+            pitch = 56;
+      else if (element == 2 && variation == 0) // Cowbell low (hit)
+            pitch = 56;
+
+      note->setPitch(pitch);
       }
 
 
@@ -971,7 +915,7 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                                                       }
                                                 if (trill) {
                                                       Articulation* art = new Articulation(note->score());
-                                                      art->setArticulationType(ArticulationType::Trill);
+                                                      art->setSymId(SymId::ornamentTrill);
                                                       if (!note->score()->addArticulation(note, art))
                                                             delete art;
                                                       }
@@ -997,13 +941,13 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                                                       QString value = wahNode.toElement().text();
                                                       if (!value.compare("Open")) {
                                                             Articulation* art = new Articulation(note->score());
-                                                            art->setArticulationType(ArticulationType::Ouvert);
+                                                            art->setSymId(SymId::brassMuteOpen);
                                                             if (!note->score()->addArticulation(note, art))
                                                                   delete art;
                                                             }
                                                       else if (!value.compare("Closed")) {
                                                             Articulation* art = new Articulation(note->score());
-                                                            art->setArticulationType(ArticulationType::Plusstop);
+                                                            art->setSymId(SymId::brassMuteClosed);
                                                             if (!note->score()->addArticulation(note, art))
                                                                   delete art;
                                                             }
@@ -1013,13 +957,13 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                                                       int value = accentNode.toElement().text().toInt();
                                                       if (value == 4) {
                                                             Articulation* art = new Articulation(note->score());
-                                                            art->setArticulationType(ArticulationType::Marcato);
+                                                            art->setSymId(SymId::articMarcatoAbove);
                                                             if (!note->score()->addArticulation(note, art))
                                                                   delete art;
                                                             }
                                                       else if (value == 8) {
                                                             Articulation* art = new Articulation(note->score());
-                                                            art->setArticulationType(ArticulationType::Sforzatoaccent);
+                                                            art->setSymId(SymId::articAccentAbove);
                                                             if (!note->score()->addArticulation(note, art))
                                                                   delete art;
                                                             }
@@ -1030,25 +974,25 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                                                       // guitar pro represents the turns the other way to what we do
                                                       if (!value.compare("InvertedTurn")) {
                                                             Articulation* art = new Articulation(note->score());
-                                                            art->setArticulationType(ArticulationType::Turn);
+                                                            art->setSymId(SymId::ornamentTurn);
                                                             if (!note->score()->addArticulation(note, art))
                                                                   delete art;
                                                             }
                                                       else if (!value.compare("Turn")) {
                                                             Articulation* art = new Articulation(note->score());
-                                                            art->setArticulationType(ArticulationType::Reverseturn);
+                                                            art->setSymId(SymId::ornamentTurnInverted);
                                                             if (!note->score()->addArticulation(note, art))
                                                                   delete art;
                                                             }
                                                       else if (!value.compare("LowerMordent")) {
                                                             Articulation* art = new Articulation(note->score());
-                                                            art->setArticulationType(ArticulationType::Mordent);
+                                                            art->setSymId(SymId::ornamentMordentInverted);
                                                             if (!note->score()->addArticulation(note, art))
                                                                   delete art;
                                                             }
                                                       else if (!value.compare("UpperMordent")) {
                                                             Articulation* art = new Articulation(note->score());
-                                                            art->setArticulationType(ArticulationType::Prall);
+                                                            art->setSymId(SymId::ornamentMordent);
                                                             if (!note->score()->addArticulation(note, art))
                                                                   delete art;
                                                             }
@@ -1063,13 +1007,13 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                                                             if (!argument.compare("PickStroke")) {
                                                                   if (!currentProperty.firstChild().toElement().text().compare("Up")) {
                                                                         Articulation* art = new Articulation(note->score());
-                                                                        art->setArticulationType(ArticulationType::Upbow);
+                                                                        art->setSymId(SymId::stringsUpBow);
                                                                         if (!note->score()->addArticulation(note, art))
                                                                               delete art;
                                                                         }
                                                                   else if (!currentProperty.firstChild().toElement().text().compare("Down")) {
                                                                         Articulation* art = new Articulation(note->score());
-                                                                        art->setArticulationType(ArticulationType::Downbow);
+                                                                        art->setSymId(SymId::stringsDownBow);
                                                                         if (!note->score()->addArticulation(note, art))
                                                                               delete art;
                                                                         }
@@ -1095,9 +1039,9 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                                                                   Articulation* art = new Articulation(note->score());
 
                                                                   if (!currentProperty.firstChild().toElement().text().compare("Slight"))
-                                                                        art->setArticulationType(ArticulationType::WiggleSawtooth);
+                                                                        art->setSymId(SymId::wiggleSawtooth);
                                                                   else
-                                                                        art->setArticulationType(ArticulationType::WiggleSawtoothWide);
+                                                                        art->setSymId(SymId::wiggleSawtoothWide);
                                                                   art->setAnchor(ArticulationAnchor::TOP_STAFF);
                                                                   if (!note->score()->addArticulation(note, art))
                                                                         delete art;
@@ -1242,7 +1186,7 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                                                 QDomNode swellNode = currentNode.parentNode().firstChildElement("Fadding");
                                                 if (!swellNode.isNull()) {
                                                       Articulation* art = new Articulation(note->score());
-                                                      art->setArticulationType(ArticulationType::VolumeSwell);
+                                                      art->setSymId(SymId::guitarVolumeSwell);
                                                       art->setAnchor(ArticulationAnchor::TOP_STAFF);
                                                       if (!note->score()->addArticulation(note, art))
                                                             delete art;
@@ -1251,9 +1195,9 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                                                 if (!noteVibrato.isNull()) {
                                                       Articulation* art = new Articulation(note->score());
                                                       if (!noteVibrato.toElement().text().compare("Slight"))
-                                                            art->setArticulationType(ArticulationType::WiggleVibratoLargeFaster);
+                                                            art->setSymId(SymId::wiggleVibratoLargeFaster);
                                                       else
-                                                            art->setArticulationType(ArticulationType::WiggleVibratoLargeSlowest);
+                                                            art->setSymId(SymId::wiggleVibratoLargeSlowest);
                                                       art->setAnchor(ArticulationAnchor::TOP_STAFF);
                                                       if (!note->score()->addArticulation(note, art))
                                                             delete art;
@@ -1411,7 +1355,7 @@ int GuitarPro6::readBeats(QString beats, GPPartInfo* partInfo, Measure* measure,
                               Fraction targetIndex = fermataToFraction((*fermataIter).index, ((*fermataIter).timeDivision));
                               if (fermataIndex == targetIndex) {
                                     Articulation* art = new Articulation(score);
-                                    art->setArticulationType(ArticulationType::Fermata);
+                                    art->setSymId(SymId::fermataAbove);
                                     art->setUp(true);
                                     art->setAnchor(ArticulationAnchor::TOP_STAFF);
                                     cr->add(art);
@@ -1450,11 +1394,11 @@ void GuitarPro6::readBars(QDomNode* barList, Measure* measure, ClefType oldClefI
                   // get the clef of the bar and apply
                   if (!currentNode.nodeName().compare("Clef")) {
                         QString clefString = currentNode.toElement().text();
-                        ClefType clefId = ClefType::G3;
+                        ClefType clefId = ClefType::G8_VB;
                         if (!clefString.compare("F4"))
-                              clefId = ClefType::F8;
+                              clefId = ClefType::F8_VB;
                         else if (!clefString.compare("G2"))
-                              clefId = ClefType::G3;
+                              clefId = ClefType::G8_VB;
                         else if (!clefString.compare("Neutral"))
                               clefId = ClefType::PERC;
                         else
@@ -1473,7 +1417,7 @@ void GuitarPro6::readBars(QDomNode* barList, Measure* measure, ClefType oldClefI
                                     delete newClef;
                               }
                         else  {
-                              Segment* segment = measure->getSegment(Segment::Type::Clef, 0);
+                              Segment* segment = measure->getSegment(Segment::Type::HeaderClef, 0);
                               segment->add(newClef);
                               oldClefId[staffIdx] = clefId;
                               }
@@ -1482,8 +1426,14 @@ void GuitarPro6::readBars(QDomNode* barList, Measure* measure, ClefType oldClefI
                   else if (!currentNode.nodeName().compare("SimileMark")) {
                         if (!currentNode.toElement().text().compare("Simple") ||
                             !currentNode.toElement().text().compare("FirstOfDouble") ||
-                            !currentNode.toElement().text().compare("SecondOfDouble"))
-                              measure->cmdInsertRepeatMeasure(staffIdx);
+                            !currentNode.toElement().text().compare("SecondOfDouble")) {
+                              RepeatMeasure* rm = new RepeatMeasure(score);
+                              rm->setTrack(staffIdx * VOICES);
+                              rm->setDuration(measure->len());
+                              rm->setDurationType(TDuration::DurationType::V_MEASURE);
+                              Segment* segment = measure->getSegment(Segment::Type::ChordRest, tick);
+                              segment->add(rm);
+                              }
                         else
                               qDebug() << "WARNING: unhandle similie mark type: " << currentNode.toElement().text();
                         }
@@ -1508,8 +1458,9 @@ void GuitarPro6::readBars(QDomNode* barList, Measure* measure, ClefType oldClefI
                                     cr->setDuration(l);
                                     cr->setDurationType(TDuration::DurationType::V_MEASURE);
                                     Segment* segment = measure->getSegment(Segment::Type::ChordRest, tick);
-                                    if(!segment->cr(staffIdx * VOICES + voiceNum))
+                                    if(!segment->cr(staffIdx * VOICES + voiceNum)) {
                                           segment->add(cr);
+                                          }
                                     contentAdded = true;
                                     continue;
                                     }
@@ -1519,7 +1470,7 @@ void GuitarPro6::readBars(QDomNode* barList, Measure* measure, ClefType oldClefI
                               if (ticks > 0)
                                     contentAdded = true;
                               // deal with possible anacrusis
-                              if (measureCounter == 0 && ticks < measure->ticks() && voiceNum == 0) {
+                              if (ticks < measure->ticks() && voiceNum == 0) {
                                     int mticks = measure->ticks();
                                     measure->setLen(Fraction::fromTicks(ticks));
                                     int offset = mticks - measure->ticks();

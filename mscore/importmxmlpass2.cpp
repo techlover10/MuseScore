@@ -55,6 +55,8 @@
 #include "libmscore/trill.h"
 #include "libmscore/utils.h"
 #include "libmscore/volta.h"
+#include "libmscore/textline.h"
+#include "libmscore/barline.h"
 
 #include "importmxmlpass2.h"
 #include "musicxmlfonthandler.h"
@@ -319,7 +321,7 @@ static void fillGap(Measure* measure, int track, int tstart, int tend)
             rest->setDuration(Fraction::fromTicks(len));
             rest->setTrack(track);
             rest->setVisible(false);
-            Segment* s = measure->getSegment(rest, tstart);
+            Segment* s = measure->getSegment(Segment::Type::ChordRest, tstart);
             s->add(rest);
             len = rest->globalDuration().ticks();
             // qDebug(" %d", len);
@@ -489,8 +491,8 @@ static void setFirstInstrument(Part* part, const QString& partId,
 static void setStaffTypePercussion(Part* part, Drumset* drumset)
       {
       for (int j = 0; j < part->nstaves(); ++j)
-            if (part->staff(j)->lines() == 5 && !part->staff(j)->isDrumStaff())
-                  part->staff(j)->setStaffType(StaffType::preset(StaffTypes::PERC_DEFAULT));
+            if (part->staff(j)->lines(0) == 5 && !part->staff(j)->isDrumStaff(0))
+                  part->staff(j)->setStaffType(0, StaffType::preset(StaffTypes::PERC_DEFAULT));
       // set drumset for instrument
       part->instrument()->setDrumset(drumset);
       part->instrument()->channel(0)->bank = 128;
@@ -814,39 +816,17 @@ static void addElemOffset(Element* el, int track, const QString& placement, Meas
        el, track, qPrintable(placement), tick);
        */
 
-      // calc y offset assuming five line staff and default style
-      // note that required y offset is element type dependent
-      const qreal stafflines = 5; // assume five line staff, but works OK-ish for other sizes too
-      qreal offsAbove = 0;
-      qreal offsBelow = 0;
-      if (el->type() == Element::Type::TEMPO_TEXT || el->type() == Element::Type::REHEARSAL_MARK) {
-            offsAbove = 0;
-            offsBelow = 8 + (stafflines - 1);
-            }
-      else if (el->type() == Element::Type::TEXT || el->type() == Element::Type::STAFF_TEXT) {
-            offsAbove = 0;
-            offsBelow = 6 + (stafflines - 1);
-            }
-      else if (el->type() == Element::Type::SYMBOL) {
-            offsAbove = -2;
-            offsBelow =  4 + (stafflines - 1);
-            }
-      else if (el->type() == Element::Type::DYNAMIC) {
-            offsAbove = -5.75 - (stafflines - 1);
-            offsBelow = -0.75;
-            }
-      else
-            qDebug("addElem el %p unsupported type %d",
-                   el, int(el->type()));  //TODO
-
       // move to correct position
       // TODO: handle rx, ry
-      qreal y = 0;
-      if (el->isDynamic()) {
-            el->setPlacement(placement == "above"
-               ? Element::Placement::ABOVE : Element::Placement::BELOW);
-            }
-      else {
+      if (el->type() == Element::Type::SYMBOL) {
+            qreal y = 0;
+            // calc y offset assuming five line staff and default style
+            // note that required y offset is element type dependent
+            const qreal stafflines = 5; // assume five line staff, but works OK-ish for other sizes too
+            qreal offsAbove = 0;
+            qreal offsBelow = 0;
+            offsAbove = -2;
+            offsBelow =  4 + (stafflines - 1);
             if (placement == "above")
                   y += offsAbove;
             if (placement == "below")
@@ -855,6 +835,11 @@ static void addElemOffset(Element* el, int track, const QString& placement, Meas
             y *= el->score()->spatium();
             el->setUserOff(QPoint(0, y));
             }
+      else {
+            el->setPlacement(placement == "above"
+               ? Element::Placement::ABOVE : Element::Placement::BELOW);
+            }
+
       el->setTrack(track);
       Segment* s = measure->getSegment(Segment::Type::ChordRest, tick);
       s->add(el);
@@ -1170,10 +1155,10 @@ void addTupletToChord(ChordRest* cr, Tuplet*& tuplet, bool& tuplImpl,
  Add Articulation to Chord.
  */
 
-static void addArticulationToChord(ChordRest* cr, ArticulationType articSym, QString dir)
+static void addArticulationToChord(ChordRest* cr, SymId articSym, QString dir)
       {
       Articulation* na = new Articulation(cr->score());
-      na->setArticulationType(articSym);
+      na->setSymId(articSym);
       if (dir == "up") {
             na->setUp(true);
             na->setAnchor(ArticulationAnchor::TOP_STAFF);
@@ -1195,24 +1180,34 @@ static void addArticulationToChord(ChordRest* cr, ArticulationType articSym, QSt
 
 static void addMordentToChord(ChordRest* cr, QString name, QString attrLong, QString attrAppr, QString attrDep)
       {
-      ArticulationType articSym = ArticulationType::ARTICULATIONS; // legal but impossible ArticulationType value here indicating "not found"
+      SymId articSym = SymId::noSym; // legal but impossible ArticulationType value here indicating "not found"
       if (name == "inverted-mordent") {
-            if ((attrLong == "" || attrLong == "no") && attrAppr == "" && attrDep == "") articSym = ArticulationType::Prall;
-            else if (attrLong == "yes" && attrAppr == "" && attrDep == "") articSym = ArticulationType::PrallPrall;
-            else if (attrLong == "yes" && attrAppr == "below" && attrDep == "") articSym = ArticulationType::UpPrall;
-            else if (attrLong == "yes" && attrAppr == "above" && attrDep == "") articSym = ArticulationType::DownPrall;
-            else if (attrLong == "yes" && attrAppr == "" && attrDep == "below") articSym = ArticulationType::PrallDown;
-            else if (attrLong == "yes" && attrAppr == "" && attrDep == "above") articSym = ArticulationType::PrallUp;
+            if ((attrLong == "" || attrLong == "no") && attrAppr == "" && attrDep == "")
+                  articSym = SymId::ornamentMordent;
+            else if (attrLong == "yes" && attrAppr == "" && attrDep == "")
+                  articSym = SymId::ornamentTremblement;
+            else if (attrLong == "yes" && attrAppr == "below" && attrDep == "")
+                  articSym = SymId::ornamentUpPrall;
+            else if (attrLong == "yes" && attrAppr == "above" && attrDep == "")
+                  articSym = SymId::ornamentDownPrall;
+            else if (attrLong == "yes" && attrAppr == "" && attrDep == "below")
+                  articSym = SymId::ornamentPrallDown;
+            else if (attrLong == "yes" && attrAppr == "" && attrDep == "above")
+                  articSym = SymId::ornamentPrallUp;
             }
       else if (name == "mordent") {
-            if ((attrLong == "" || attrLong == "no") && attrAppr == "" && attrDep == "") articSym = ArticulationType::Mordent;
-            else if (attrLong == "yes" && attrAppr == "" && attrDep == "") articSym = ArticulationType::PrallMordent;
-            else if (attrLong == "yes" && attrAppr == "below" && attrDep == "") articSym = ArticulationType::UpMordent;
-            else if (attrLong == "yes" && attrAppr == "above" && attrDep == "") articSym = ArticulationType::DownMordent;
+            if ((attrLong == "" || attrLong == "no") && attrAppr == "" && attrDep == "")
+                  articSym = SymId::ornamentMordentInverted;
+            else if (attrLong == "yes" && attrAppr == "" && attrDep == "")
+                  articSym = SymId::ornamentPrallMordent;
+            else if (attrLong == "yes" && attrAppr == "below" && attrDep == "")
+                  articSym = SymId::ornamentUpMordent;
+            else if (attrLong == "yes" && attrAppr == "above" && attrDep == "")
+                  articSym = SymId::ornamentDownMordent;
             }
-      if (articSym != ArticulationType::ARTICULATIONS) {
+      if (articSym != SymId::noSym) {
             Articulation* na = new Articulation(cr->score());
-            na->setArticulationType(articSym);
+            na->setSymId(articSym);
             cr->add(na);
             }
       else
@@ -1237,22 +1232,23 @@ static void addMordentToChord(ChordRest* cr, QString name, QString attrLong, QSt
 
 static bool addMxmlArticulationToChord(ChordRest* cr, QString mxmlName)
       {
-      QMap<QString, ArticulationType> map; // map MusicXML articulation name to MuseScore symbol
-      map["accent"]           = ArticulationType::Sforzatoaccent;
-      map["staccatissimo"]    = ArticulationType::Staccatissimo;
-      map["staccato"]         = ArticulationType::Staccato;
-      map["tenuto"]           = ArticulationType::Tenuto;
-      map["turn"]             = ArticulationType::Turn;
-      map["inverted-turn"]    = ArticulationType::Reverseturn;
-      map["stopped"]          = ArticulationType::Plusstop;
-      map["up-bow"]           = ArticulationType::Upbow;
-      map["down-bow"]         = ArticulationType::Downbow;
-      map["detached-legato"]  = ArticulationType::Portato;
-      map["spiccato"]         = ArticulationType::Staccatissimo;
-      map["snap-pizzicato"]   = ArticulationType::Snappizzicato;
-      map["schleifer"]        = ArticulationType::Schleifer;
-      map["open-string"]      = ArticulationType::Ouvert;
-      map["thumb-position"]   = ArticulationType::ThumbPosition;
+      QMap<QString, SymId> map; // map MusicXML articulation name to MuseScore symbol
+      map["accent"]           = SymId::articAccentAbove;
+      map["staccatissimo"]    = SymId::articStaccatissimoAbove;
+      map["staccato"]         = SymId::articStaccatoAbove;
+      map["tenuto"]           = SymId::articTenutoAbove;
+      map["turn"]             = SymId::ornamentTurn;
+      map["inverted-turn"]    = SymId::ornamentTurnInverted;
+      map["stopped"]          = SymId::brassMuteClosed;
+// TODO map["harmonic"]         = SymId::stringsHarmonic;
+      map["up-bow"]           = SymId::stringsUpBow;
+      map["down-bow"]         = SymId::stringsDownBow;
+      map["detached-legato"]  = SymId::articTenutoStaccatoAbove;
+      map["spiccato"]         = SymId::articStaccatissimoAbove;
+      map["snap-pizzicato"]   = SymId::pluckedSnapPizzicatoAbove;
+      map["schleifer"]        = SymId::ornamentPrecompSlide;
+      map["open-string"]      = SymId::brassMuteOpen;
+      map["thumb-position"]   = SymId::stringsThumbPosition;
 
       if (map.contains(mxmlName)) {
             addArticulationToChord(cr, map.value(mxmlName), "");
@@ -1273,19 +1269,24 @@ static bool addMxmlArticulationToChord(ChordRest* cr, QString mxmlName)
 static NoteHead::Group convertNotehead(QString mxmlName)
       {
       QMap<QString, int> map; // map MusicXML notehead name to a MuseScore headgroup
-      map["slash"] = 5;
-      map["triangle"] = 3;
-      map["diamond"] = 2;
-      map["x"] = 1;
-      map["circle-x"] = 6;
-      map["do"] = 7;
-      map["re"] = 8;
-      map["mi"] = 4;
-      map["fa"] = 9;
-      map["so"] = 12;
-      map["la"] = 10;
-      map["ti"] = 11;
-      map["normal"] = 0;
+      map["slash"] = int(NoteHead::Group::HEAD_SLASH);
+      map["triangle"] = int(NoteHead::Group::HEAD_TRIANGLE_UP);
+      map["diamond"] = int(NoteHead::Group::HEAD_DIAMOND);
+      map["cross"] = int(NoteHead::Group::HEAD_PLUS);
+      map["x"] = int(NoteHead::Group::HEAD_CROSS);
+      map["circle-x"] = int(NoteHead::Group::HEAD_XCIRCLE);
+      map["inverted triangle"] = int(NoteHead::Group::HEAD_TRIANGLE_DOWN);
+      map["slashed"] = int(NoteHead::Group::HEAD_SLASHED1);
+      map["back slashed"] = int(NoteHead::Group::HEAD_SLASHED2);
+      map["normal"] = int(NoteHead::Group::HEAD_NORMAL);
+      map["do"] = int(NoteHead::Group::HEAD_DO);
+      map["re"] = int(NoteHead::Group::HEAD_RE);
+      map["mi"] = int(NoteHead::Group::HEAD_MI);
+      map["fa"] = int(NoteHead::Group::HEAD_FA);
+      map["fa up"] = int(NoteHead::Group::HEAD_FA);
+      map["so"] = int(NoteHead::Group::HEAD_SOL);
+      map["la"] = int(NoteHead::Group::HEAD_LA);
+      map["ti"] = int(NoteHead::Group::HEAD_TI);
 
       if (map.contains(mxmlName))
             return NoteHead::Group(map.value(mxmlName));
@@ -1326,7 +1327,7 @@ static void addTextToNote(int l, int c, QString txt, TextStyleType style, Score*
  Note: MusicXML common.mod: "The fermata type is upright if not specified."
  */
 
-static void addFermata(ChordRest* cr, const QString type, const ArticulationType articSym)
+static void addFermata(ChordRest* cr, const QString type, const SymId articSym)
       {
       if (type == "upright" || type == "")
             addArticulationToChord(cr, articSym, "up");
@@ -1355,34 +1356,25 @@ static void setSLinePlacement(SLine* sli, const QString placement)
 
       // calc y offset assuming five line staff and default style
       // note that required y offset is element type dependent
-      const qreal stafflines = 5;       // assume five line staff, but works OK-ish for other sizes too
-      qreal offsAbove = 0;
-      qreal offsBelow = 0;
-      if (sli->type() == Element::Type::PEDAL || sli->type() == Element::Type::HAIRPIN) {
-            offsAbove = -6 - (stafflines - 1);
-            offsBelow = -1;
+      if (sli->type() == Element::Type::HAIRPIN) {
+            if (placement == "above") {
+                  const qreal stafflines = 5;       // assume five line staff, but works OK-ish for other sizes too
+                  qreal offsAbove = -6 - (stafflines - 1);
+                  qreal y = 0;
+                  y +=  offsAbove;
+                  // add linesegment containing the user offset
+                  LineSegment* tls= sli->createLineSegment();
+                  //qDebug("   y = %g", y);
+                  tls->setAutoplace(false);
+                  y *= sli->score()->spatium();
+                  tls->setUserOff(QPointF(0, y));
+                  sli->add(tls);
+                  }
             }
-      else if (sli->type() == Element::Type::TEXTLINE) {
-            offsAbove = 0;
-            offsBelow =  5 + 3 + (stafflines - 1);
+      else {
+            sli->setPlacement(placement == "above"
+               ? Element::Placement::ABOVE : Element::Placement::BELOW);
             }
-      else if (sli->type() == Element::Type::OTTAVA) {
-            // ignore
-            }
-      else
-            qDebug("setSLinePlacement sli %p unsupported type %d",
-                   sli, int(sli->type()));
-
-      // move to correct position
-      qreal y = 0;
-      if (placement == "above") y += offsAbove;
-      if (placement == "below") y += offsBelow;
-      // add linesegment containing the user offset
-      LineSegment* tls= sli->createLineSegment();
-      //qDebug("   y = %g", y);
-      y *= sli->score()->spatium();
-      tls->setUserOff(QPointF(0, y));
-      sli->add(tls);
       }
 
 //---------------------------------------------------------
@@ -1965,7 +1957,7 @@ static void markUserAccidentals(const int firstStaff,
                                       && !accTmp.value(ln, false))) {
                                     nt->accidental()->setRole(AccidentalRole::USER);
                                     }
-                              else if (nt->accidental()->accidentalType() > AccidentalType::NATURAL
+                              else if (Accidental::isMicrotonal(nt->accidental()->accidentalType())
                                        && nt->accidental()->accidentalType() < AccidentalType::END) {
                                     // microtonal accidental
                                     nt->accidental()->setRole(AccidentalRole::USER);
@@ -2281,9 +2273,11 @@ void MusicXMLParserPass2::print(Measure* measure)
             }
       if (pm) {
             if (preferences.musicxmlImportBreaks && (newSystem || newPage)) {
-                  LayoutBreak* lb = new LayoutBreak(_score);
-                  lb->setLayoutBreakType(newSystem ? LayoutBreak::Type::LINE : LayoutBreak::Type::PAGE);
-                  pm->add(lb);
+                  if (!pm->lineBreak() && !pm->pageBreak()) {
+                        LayoutBreak* lb = new LayoutBreak(_score);
+                        lb->setLayoutBreakType(newSystem ? LayoutBreak::Type::LINE : LayoutBreak::Type::PAGE);
+                        pm->add(lb);
+                        }
                   }
             }
 
@@ -2927,7 +2921,7 @@ void MusicXMLParserDirection::wedge(const QString& type, const int number,
       if (type == "crescendo" || type == "diminuendo") {
             Hairpin* h = new Hairpin(_score);
             h->setHairpinType(type == "crescendo"
-                              ? Hairpin::Type::CRESCENDO : Hairpin::Type::DECRESCENDO);
+                              ? HairpinType::CRESC_HAIRPIN : HairpinType::DECRESC_HAIRPIN);
             if (niente == "yes")
                   h->setHairpinCircledTip(true);
             starts.append(MusicXmlSpannerDesc(h, Element::Type::HAIRPIN, number));
@@ -3104,6 +3098,10 @@ static bool determineBarLineType(const QString& barStyle, const QString& repeat,
                   return false;
                   }
             }
+      else if (barStyle == "tick") {
+      }
+      else if (barStyle == "short") {
+      }
       else {
             qDebug("unsupported bar type <%s>", barStyle.toLatin1().data());       // TODO
             return false;
@@ -3168,7 +3166,31 @@ void MusicXMLParserPass2::barline(const QString& partId, Measure* measure)
                   }
             else {
                   int track = _pass1.trackForPart(partId);
-                  if (loc == "right")
+                  if (barStyle == "tick") {
+                        BarLine* b = new BarLine(measure->score());
+                        int track = _pass1.trackForPart(partId);
+                        b->setTrack(track);
+                        b->setBarLineType(BarLineType::NORMAL);
+                        b->setSpan(1);
+                        b->setSpanFrom(BARLINE_SPAN_TICK1_FROM);
+                        b->setSpanTo(BARLINE_SPAN_TICK1_TO);
+                        b->setCustomSpan(true);
+                        Segment* segment = measure->getSegment(Segment::Type::EndBarLine, measure->endTick());
+                        segment->add(b);
+                        }
+                  else if (barStyle == "short") {
+                        BarLine* b = new BarLine(measure->score());
+                        int track = _pass1.trackForPart(partId);
+                        b->setTrack(track);
+                        b->setBarLineType(BarLineType::NORMAL);
+                        b->setSpan(1);
+                        b->setSpanFrom(BARLINE_SPAN_SHORT1_FROM);
+                        b->setSpanTo(BARLINE_SPAN_SHORT1_TO);
+                        b->setCustomSpan(true);
+                        Segment* segment = measure->getSegment(Segment::Type::EndBarLine, measure->endTick());
+                        segment->add(b);
+                        }
+                  else if (loc == "right")
                         measure->setEndBarLineType(type, track, visible);
                   else if (measure->prevMeasure())
                         measure->prevMeasure()->setEndBarLineType(type, track, visible);
@@ -3350,7 +3372,7 @@ static void addKey(const KeySigEvent key, const bool printObj, Score* score, Mea
             keysig->setTrack((staffIdx) * VOICES);
             keysig->setKeySigEvent(key);
             keysig->setVisible(printObj);
-            Segment* s = measure->getSegment(keysig, tick);
+            Segment* s = measure->getSegment(Segment::Type::KeySig, tick);
             s->add(keysig);
             //currKeySig->setKeySigEvent(key);
             }
@@ -3539,13 +3561,13 @@ void MusicXMLParserPass2::clef(const QString& partId, Measure* measure, const in
       if (c == "G" && i == 0 && line == 2)
             clef = ClefType::G;
       else if (c == "G" && i == 1 && line == 2)
-            clef = ClefType::G1;
+            clef = ClefType::G8_VA;
       else if (c == "G" && i == 2 && line == 2)
-            clef = ClefType::G2;
+            clef = ClefType::G15_MA;
       else if (c == "G" && i == -1 && line == 2)
-            clef = ClefType::G3;
+            clef = ClefType::G8_VB;
       else if (c == "G" && i == 0 && line == 1)
-            clef = ClefType::G4;
+            clef = ClefType::G_1;
       else if (c == "F" && i == 0 && line == 3)
             clef = ClefType::F_B;
       else if (c == "F" && i == 0 && line == 4)
@@ -3555,9 +3577,9 @@ void MusicXMLParserPass2::clef(const QString& partId, Measure* measure, const in
       else if (c == "F" && i == 2 && line == 4)
             clef = ClefType::F_15MA;
       else if (c == "F" && i == -1 && line == 4)
-            clef = ClefType::F8;
+            clef = ClefType::F8_VB;
       else if (c == "F" && i == -2 && line == 4)
-            clef = ClefType::F15;
+            clef = ClefType::F15_MB;
       else if (c == "F" && i == 0 && line == 5)
             clef = ClefType::F_C;
       else if (c == "C") {
@@ -3587,18 +3609,18 @@ void MusicXMLParserPass2::clef(const QString& partId, Measure* measure, const in
       clefs->setClefType(clef);
       int track = _pass1.trackForPart(partId) + clefno * VOICES;
       clefs->setTrack(track);
-      Segment* s = measure->getSegment(clefs, tick);
+      Segment* s = measure->getSegment(tick ? Segment::Type::Clef : Segment::Type::HeaderClef, tick);
       s->add(clefs);
 
       // set the correct staff type
       // note that this overwrites the staff lines value set in pass 1
       // also note that clef handling should probably done in pass1
       int staffIdx = _score->staffIdx(part) + clefno;
-      int lines = _score->staff(staffIdx)->lines();
+      int lines = _score->staff(staffIdx)->lines(0);
       if (st == StaffTypes::TAB_DEFAULT || (_hasDrumset && st == StaffTypes::PERC_DEFAULT)) {
-            _score->staff(staffIdx)->setStaffType(StaffType::preset(st));
-            _score->staff(staffIdx)->setLines(lines); // preserve previously set staff lines
-            _score->staff(staffIdx)->setBarLineTo((lines - 1) * 2);
+            _score->staff(staffIdx)->setStaffType(0, StaffType::preset(st));
+            _score->staff(staffIdx)->setLines(0, lines); // preserve previously set staff lines
+            _score->staff(staffIdx)->setBarLineTo(0);    // default
             }
       }
 
@@ -3706,7 +3728,7 @@ void MusicXMLParserPass2::time(const QString& partId, Measure* measure, const in
                               timesig->setNumeratorString(beats);
                               timesig->setDenominatorString(beatType);
                               }
-                        Segment* s = measure->getSegment(timesig, tick);
+                        Segment* s = measure->getSegment(Segment::Type::TimeSig, tick);
                         s->add(timesig);
                         }
                   }
@@ -3726,13 +3748,18 @@ void MusicXMLParserPass2::transpose(const QString& partId)
       Q_ASSERT(_e.isStartElement() && _e.name() == "transpose");
 
       Interval interval;
-
+      bool diatonic = false;
+      bool chromatic = false;
       while (_e.readNextStartElement()) {
             int i = _e.readElementText().toInt();
-            if (_e.name() == "diatonic")
+            if (_e.name() == "diatonic") {
                   interval.diatonic = i;
-            else if (_e.name() == "chromatic")
+                  diatonic = true;
+                  }
+            else if (_e.name() == "chromatic") {
                   interval.chromatic = i;
+                  chromatic = true;
+                  }
             else if (_e.name() == "octave-change") {
                   interval.diatonic += i * 7;
                   interval.chromatic += i * 12;
@@ -3740,6 +3767,9 @@ void MusicXMLParserPass2::transpose(const QString& partId)
             else
                   skipLogCurrElem();
             }
+
+      if (chromatic && !diatonic)
+            interval.diatonic += chromatic2diatonic(interval.chromatic);
 
       _pass1.getPart(partId)->instrument()->setTranspose(interval);
       }
@@ -3909,7 +3939,7 @@ static Chord* findOrCreateChord(Score* score, Measure* m,
             c->setTrack(track);
 
             setChordRestDuration(c, duration, dura);
-            Segment* s = m->getSegment(c, tick);
+            Segment* s = m->getSegment(Segment::Type::ChordRest, tick);
             s->add(c);
             }
       c->setStaffMove(move);
@@ -4426,7 +4456,7 @@ Note* MusicXMLParserPass2::note(const QString& partId,
                   // correct for number of staff lines
                   // see ExportMusicXml::unpitch2xml for explanation
                   // TODO handle other # staff lines ?
-                  int staffLines = c->staff()->lines();
+                  int staffLines = c->staff()->lines(0);
                   if (staffLines == 1) line -= 8;
                   if (staffLines == 3) line -= 2;
 
@@ -5372,7 +5402,7 @@ void MusicXMLParserPass2::notations(Note* note, ChordRest* cr, const int tick,
       int wavyLineNo = 0;
       QString arpeggioType;
       //      QString glissandoType;
-      int breath = -1;
+      SymId breath = SymId::noSym;
       int tremolo = 0;
       QString tremoloType;
       QString placement;
@@ -5530,12 +5560,12 @@ void MusicXMLParserPass2::notations(Note* note, ChordRest* cr, const int tick,
                               continue;
                               }
                         else if (_e.name() == "breath-mark") {
-                              breath = 0;
+                              breath = SymId::breathMarkComma;
                               _e.readElementText();
                               // TODO: handle value read (note: encoding unknown, only "comma" found)
                               }
                         else if (_e.name() == "caesura") {
-                              breath = 3;
+                              breath = SymId::caesura;
                               _e.readNext();
                               }
                         else if (_e.name() == "doit"
@@ -5548,9 +5578,9 @@ void MusicXMLParserPass2::notations(Note* note, ChordRest* cr, const int tick,
                         else if (_e.name() == "strong-accent") {
                               QString strongAccentType = _e.attributes().value("type").toString();
                               if (strongAccentType == "up" || strongAccentType == "")
-                                    addArticulationToChord(cr, ArticulationType::Marcato, "up");
+                                    addArticulationToChord(cr, SymId::articMarcatoAbove, "up");
                               else if (strongAccentType == "down")
-                                    addArticulationToChord(cr, ArticulationType::Marcato, "down");
+                                    addArticulationToChord(cr, SymId::articMarcatoAbove, "down");
                               else
                                     logError(QString("unknown mercato type %1").arg(strongAccentType));
                               _e.readNext();
@@ -5587,13 +5617,12 @@ void MusicXMLParserPass2::notations(Note* note, ChordRest* cr, const int tick,
                         else if (_e.name() == "tremolo") {
                               tremoloType = _e.attributes().value("type").toString();
                               tremolo = _e.readElementText().toInt();
-                              _e.readNext();
                               }
                         else if (_e.name() == "accidental-mark")
                               skipLogCurrElem();
                         else if (_e.name() == "delayed-turn") {
                               // TODO: actually this should be offset a bit to the right
-                              addArticulationToChord(cr, ArticulationType::Turn, "");
+                              addArticulationToChord(cr, SymId::ornamentTurn, "");
                               _e.readNext();
                               }
                         else if (_e.name() == "inverted-mordent"
@@ -5611,7 +5640,7 @@ void MusicXMLParserPass2::notations(Note* note, ChordRest* cr, const int tick,
                   // note that mscore wavy line already implicitly includes a trillsym
                   // so don't add an additional one
                   if (trillMark && wavyLineType != "start")
-                        addArticulationToChord(cr, ArticulationType::Trill, "");
+                        addArticulationToChord(cr, SymId::ornamentTrill, "");
                   }
             else if (_e.name() == "technical") {
                   while (_e.readNextStartElement()) {
@@ -5627,7 +5656,7 @@ void MusicXMLParserPass2::notations(Note* note, ChordRest* cr, const int tick,
                         else if (_e.name() == "fret") {
                               int fret = _e.readElementText().toInt();
                               if (note) {
-                                    if (note->staff()->isTabStaff())
+                                    if (note->staff()->isTabStaff(0))
                                           note->setFret(fret);
                                     }
                               else
@@ -5639,7 +5668,7 @@ void MusicXMLParserPass2::notations(Note* note, ChordRest* cr, const int tick,
                         else if (_e.name() == "string") {
                               QString txt = _e.readElementText();
                               if (note) {
-                                    if (note->staff()->isTabStaff())
+                                    if (note->staff()->isTabStaff(0))
                                           note->setString(txt.toInt() - 1);
                                     else
                                           addTextToNote(_e.lineNumber(), _e.columnNumber(), txt,
@@ -5773,11 +5802,11 @@ void MusicXMLParserPass2::notations(Note* note, ChordRest* cr, const int tick,
                   logError(QString("unknown wavy-line type %1").arg(wavyLineType));
             }
 
-      if (breath >= 0) {
+      if (breath != SymId::noSym) {
             Breath* b = new Breath(_score);
             // b->setTrack(trk + voice); TODO check next line
             b->setTrack(track);
-            b->setBreathType(breath);
+            b->setSymId(breath);
             Segment* seg = measure->getSegment(Segment::Type::Breath, tick + ticks);
             seg->add(b);
             }
@@ -5903,11 +5932,11 @@ void MusicXMLParserPass2::fermata(ChordRest* cr)
       QString fermata     = _e.readElementText();
 
       if (fermata == "normal" || fermata == "")
-            addFermata(cr, fermataType, ArticulationType::Fermata);
+            addFermata(cr, fermataType, SymId::fermataAbove);
       else if (fermata == "angled")
-            addFermata(cr, fermataType, ArticulationType::Shortfermata);
+            addFermata(cr, fermataType, SymId::fermataShortAbove);
       else if (fermata == "square")
-            addFermata(cr, fermataType, ArticulationType::Longfermata);
+            addFermata(cr, fermataType, SymId::fermataLongAbove);
       else
             logError(QString("unknown fermata '%1'").arg(fermata));
       }

@@ -952,7 +952,7 @@ niet hernoemen naar
     </message>
     <message>
         <source>Save</source>
-        <translation>Opslaan</translation>
+        <translation>&amp;Opslaan</translation>
     </message>
     <message>
         <source>Open</source>
@@ -980,7 +980,7 @@ niet hernoemen naar
     </message>
     <message>
         <source>Discard</source>
-        <translation>Verwerpen</translation>
+        <translation>&amp;Niet opslaan</translation>
     </message>
     <message>
         <source>&amp;Yes</source>

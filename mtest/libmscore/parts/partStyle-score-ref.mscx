@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<museScore version="2.06">
+<museScore version="3.00">
   <Score>
     <LayerTag id="0" tag="default"></LayerTag>
     <currentLayer>0</currentLayer>
@@ -293,7 +293,7 @@
         <Rest>
           <lid>38</lid>
           <durationType>measure</durationType>
-          <duration z="4" n="4"/>
+          <duration>4/4</duration>
           </Rest>
         <BarLine>
           <subtype>normal</subtype>
@@ -305,7 +305,7 @@
         <Rest>
           <lid>40</lid>
           <durationType>measure</durationType>
-          <duration z="4" n="4"/>
+          <duration>4/4</duration>
           </Rest>
         <BarLine>
           <subtype>normal</subtype>
@@ -317,7 +317,7 @@
         <Rest>
           <lid>42</lid>
           <durationType>measure</durationType>
-          <duration z="4" n="4"/>
+          <duration>4/4</duration>
           </Rest>
         <BarLine>
           <subtype>normal</subtype>
@@ -329,7 +329,7 @@
         <Rest>
           <lid>44</lid>
           <durationType>measure</durationType>
-          <duration z="4" n="4"/>
+          <duration>4/4</duration>
           </Rest>
         <BarLine>
           <subtype>normal</subtype>
@@ -341,7 +341,7 @@
         <Rest>
           <lid>46</lid>
           <durationType>measure</durationType>
-          <duration z="4" n="4"/>
+          <duration>4/4</duration>
           </Rest>
         <BarLine>
           <subtype>normal</subtype>
@@ -353,7 +353,7 @@
         <Rest>
           <lid>48</lid>
           <durationType>measure</durationType>
-          <duration z="4" n="4"/>
+          <duration>4/4</duration>
           </Rest>
         <BarLine>
           <subtype>normal</subtype>
@@ -365,7 +365,7 @@
         <Rest>
           <lid>50</lid>
           <durationType>measure</durationType>
-          <duration z="4" n="4"/>
+          <duration>4/4</duration>
           </Rest>
         <BarLine>
           <subtype>normal</subtype>
@@ -377,7 +377,7 @@
         <Rest>
           <lid>52</lid>
           <durationType>measure</durationType>
-          <duration z="4" n="4"/>
+          <duration>4/4</duration>
           </Rest>
         <BarLine>
           <subtype>end</subtype>
@@ -423,6 +423,7 @@
       <showUnprintable>1</showUnprintable>
       <showFrames>1</showFrames>
       <showMargins>0</showMargins>
+      <metaTag name="partName">Flute</metaTag>
       <PageList>
         <Page>
           <System>
@@ -439,7 +440,7 @@
             </StaffType>
           <bracket type="-1" span="0"/>
           </Staff>
-        <trackName></trackName>
+        <trackName>Flute</trackName>
         <Instrument>
           <trackName>Flute</trackName>
           <minPitchP>59</minPitchP>
@@ -475,6 +476,10 @@
             <lid>1</lid>
             <style>Title</style>
             <text>Style Score</text>
+            </Text>
+          <Text>
+            <style>Instrument Name (Part)</style>
+            <text>Flute</text>
             </Text>
           </VBox>
         <Measure number="1">
@@ -656,6 +661,7 @@
       <showUnprintable>1</showUnprintable>
       <showFrames>1</showFrames>
       <showMargins>0</showMargins>
+      <metaTag name="partName">Oboe</metaTag>
       <PageList>
         <Page>
           <System>
@@ -672,7 +678,7 @@
             </StaffType>
           <bracket type="-1" span="0"/>
           </Staff>
-        <trackName></trackName>
+        <trackName>Oboe</trackName>
         <Instrument>
           <shortName>Ob.</shortName>
           <trackName>Oboe</trackName>
@@ -710,6 +716,10 @@
             <style>Title</style>
             <text>Style Score</text>
             </Text>
+          <Text>
+            <style>Instrument Name (Part)</style>
+            <text>Oboe</text>
+            </Text>
           </VBox>
         <Measure number="1">
           <Clef>
@@ -726,7 +736,7 @@
           <Rest>
             <lid>38</lid>
             <durationType>measure</durationType>
-            <duration z="4" n="4"/>
+            <duration>4/4</duration>
             </Rest>
           <BarLine>
             <subtype>normal</subtype>
@@ -743,19 +753,18 @@
             </TimeSig>
           <Rest>
             <durationType>measure</durationType>
-            <duration z="32" n="4"/>
+            <duration>32/4</duration>
             </Rest>
           <BarLine>
             <subtype>end</subtype>
             <span>1</span>
             </BarLine>
           </Measure>
-        <tick>1920</tick>
         <Measure number="2">
           <Rest>
             <lid>40</lid>
             <durationType>measure</durationType>
-            <duration z="4" n="4"/>
+            <duration>4/4</duration>
             </Rest>
           <BarLine>
             <subtype>normal</subtype>
@@ -767,7 +776,7 @@
           <Rest>
             <lid>42</lid>
             <durationType>measure</durationType>
-            <duration z="4" n="4"/>
+            <duration>4/4</duration>
             </Rest>
           <BarLine>
             <subtype>normal</subtype>
@@ -779,7 +788,7 @@
           <Rest>
             <lid>44</lid>
             <durationType>measure</durationType>
-            <duration z="4" n="4"/>
+            <duration>4/4</duration>
             </Rest>
           <BarLine>
             <subtype>normal</subtype>
@@ -791,7 +800,7 @@
           <Rest>
             <lid>46</lid>
             <durationType>measure</durationType>
-            <duration z="4" n="4"/>
+            <duration>4/4</duration>
             </Rest>
           <BarLine>
             <subtype>normal</subtype>
@@ -803,7 +812,7 @@
           <Rest>
             <lid>48</lid>
             <durationType>measure</durationType>
-            <duration z="4" n="4"/>
+            <duration>4/4</duration>
             </Rest>
           <BarLine>
             <subtype>normal</subtype>
@@ -815,7 +824,7 @@
           <Rest>
             <lid>50</lid>
             <durationType>measure</durationType>
-            <duration z="4" n="4"/>
+            <duration>4/4</duration>
             </Rest>
           <BarLine>
             <subtype>normal</subtype>
@@ -827,7 +836,7 @@
           <Rest>
             <lid>52</lid>
             <durationType>measure</durationType>
-            <duration z="4" n="4"/>
+            <duration>4/4</duration>
             </Rest>
           <BarLine>
             <subtype>end</subtype>

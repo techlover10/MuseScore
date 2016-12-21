@@ -18,12 +18,10 @@
 #include "ft2build.h"
 #include FT_FREETYPE_H
 
-class QPainter;
-
-
 namespace Ms {
 
 class TextStyle;
+enum class StyleIdx;
 
 //---------------------------------------------------------
 //   SymId
@@ -2634,7 +2632,15 @@ enum class SymId {
 //    SMuFL stylistic alternates which we need to access directly
 
       noteheadDoubleWholeAlt,             // double whole with double side bars
+      fourStringTabClefSerif,             // TAB clef in script style
       sixStringTabClefSerif,              // TAB clef in script style
+      cClefFrench,
+      cClefFrench20C,
+      fClefFrench,
+      fClef19thCentury,
+      braceSmall,
+      braceLarge,
+      braceLarger,
 
 //    MuseScore local symbols, precomposed symbols to mimic some emmentaler glyphs
 
@@ -2716,7 +2722,7 @@ class Sym {
       static SymId oldName2id(const QString s)   { return lonhash.value(s, SymId::noSym);}
       static const char* id2name(SymId id);
 
-      static QString id2userName(SymId id)   { return symUserNames[int(id)]; }
+      static QString id2userName(SymId id)       { return qApp->translate("symUserNames", symUserNames[int(id)].toUtf8().data()); }
       static SymId userName2id(const QString& s);
 
       static QVector<const char*> symNames;
@@ -2743,7 +2749,6 @@ struct GlyphKey {
       bool operator==(const GlyphKey&) const;
       };
 
-
 struct GlyphPixmap {
       QPixmap pm;
       QPointF offset;
@@ -2767,9 +2772,12 @@ class ScoreFont {
       QString _filename;
       QByteArray fontImage;
       QCache<GlyphKey, GlyphPixmap>* cache { 0 };
+      std::list<std::pair<StyleIdx, QVariant>> _engravingDefaults;
+      double _textEnclosureThickness = 0;
       mutable QFont* font { 0 };
 
       static QVector<ScoreFont> _scoreFonts;
+      static QJsonObject _glyphnamesJson;
       const Sym& sym(SymId id) const { return _symbols[int(id)]; }
       void load();
       void computeMetrics(Sym* sym, int code);
@@ -2785,6 +2793,8 @@ class ScoreFont {
 
       const QString& name() const           { return _name;   }
       const QString& family() const         { return _family; }
+      std::list<std::pair<StyleIdx, QVariant>> engravingDefaults()  { return _engravingDefaults; }
+      double textEnclosureThickness() { return _textEnclosureThickness; }
 
       QString fontPath() const { return _fontPath; }
 
@@ -2792,6 +2802,8 @@ class ScoreFont {
       static ScoreFont* fallbackFont();
       static const char* fallbackTextFont();
       static const QVector<ScoreFont>& scoreFonts() { return _scoreFonts; }
+      static bool initGlyphNamesJson();
+      static const QJsonObject& glyphNamesJson() { return _glyphnamesJson; }
 
       QString toString(SymId) const;
       QPixmap sym2pixmap(SymId, qreal) { return QPixmap(); }      // TODOxxxx
@@ -2802,26 +2814,28 @@ class ScoreFont {
       void draw(const std::vector<SymId>&, QPainter*, qreal mag, const QPointF& pos, qreal scale) const;
       void draw(SymId id, QPainter* painter, qreal mag, const QPointF& pos, int n) const;
 
-      qreal height(SymId id, qreal mag) const         { return sym(id).bbox().height() * mag; }
-      qreal width(SymId id, qreal mag) const          { return sym(id).bbox().width() * mag;  }
-      qreal advance(SymId id, qreal mag) const        { return sym(id).advance() * mag;  }
+      qreal height(SymId id, qreal mag) const         { return bbox(id, mag).height(); }
+      qreal width(SymId id, qreal mag) const          { return bbox(id, mag).width();  }
+      qreal advance(SymId id, qreal mag) const;
       qreal width(const std::vector<SymId>&, qreal mag) const;
 
       const QRectF bbox(SymId id, qreal mag) const;
       const QRectF bbox(const std::vector<SymId>& s, qreal mag) const;
-      QPointF stemDownNW(SymId id, qreal mag) const   { return sym(id).stemDownNW() * mag;   }
-      QPointF stemUpSE(SymId id, qreal mag) const     { return sym(id).stemUpSE() * mag;   }
-      QPointF cutOutNE(SymId id, qreal mag) const     { return sym(id).cutOutNE() * mag; }
-      QPointF cutOutNW(SymId id, qreal mag) const     { return sym(id).cutOutNW() * mag; }
-      QPointF cutOutSE(SymId id, qreal mag) const     { return sym(id).cutOutSE() * mag; }
-      QPointF cutOutSW(SymId id, qreal mag) const     { return sym(id).cutOutSW() * mag; }
+      QPointF stemDownNW(SymId id, qreal mag) const;
+      QPointF stemUpSE(SymId id, qreal mag) const;
+      QPointF cutOutNE(SymId id, qreal mag) const;
+      QPointF cutOutNW(SymId id, qreal mag) const;
+      QPointF cutOutSE(SymId id, qreal mag) const;
+      QPointF cutOutSW(SymId id, qreal mag) const;
 
       bool isValid(SymId id) const                    { return sym(id).isValid(); }
+      bool useFallbackFont(SymId id) const;
       };
 
 extern void initScoreFonts();
 
 }     // namespace Ms
 
+Q_DECLARE_METATYPE(Ms::SymId);
 #endif
 

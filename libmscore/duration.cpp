@@ -50,6 +50,20 @@ DurationElement::~DurationElement()
       }
 
 //---------------------------------------------------------
+//   topTuplet
+//---------------------------------------------------------
+
+Tuplet* DurationElement::topTuplet() const
+      {
+      Tuplet* t = tuplet();
+      if (t) {
+            while (t->tuplet())
+                  t = t->tuplet();
+            }
+      return t;
+      }
+
+//---------------------------------------------------------
 //   globalDuration
 //---------------------------------------------------------
 
@@ -112,7 +126,7 @@ bool DurationElement::readProperties(XmlReader& e)
 //   writeProperties
 //---------------------------------------------------------
 
-void DurationElement::writeProperties(Xml& xml) const
+void DurationElement::writeProperties(XmlWriter& xml) const
       {
       Element::writeProperties(xml);
       if (tuplet())
@@ -123,11 +137,11 @@ void DurationElement::writeProperties(Xml& xml) const
 //   writeTuplet
 //---------------------------------------------------------
 
-void DurationElement::writeTuplet(Xml& xml)
+void DurationElement::writeTuplet(XmlWriter& xml)
       {
       if (tuplet() && tuplet()->elements().front() == this) {
             tuplet()->writeTuplet(xml);           // recursion
-            tuplet()->setId(xml.tupletId++);
+            tuplet()->setId(xml.nextTupletId());
             tuplet()->write(xml);
             }
       }

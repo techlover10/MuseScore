@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<museScore version="2.06">
+<museScore version="3.00">
   <Score>
     <LayerTag id="0" tag="default"></LayerTag>
     <currentLayer>0</currentLayer>
@@ -152,7 +152,7 @@
           <Note>
             <lid>9</lid>
             <Accidental>
-              <subtype>sharp</subtype>
+              <subtype>accidentalSharp</subtype>
               </Accidental>
             <pitch>56</pitch>
             <tpc>22</tpc>
@@ -164,7 +164,7 @@
           <lid>11</lid>
           <durationType>quarter</durationType>
           <Articulation>
-            <subtype>trill</subtype>
+            <subtype>ornamentTrill</subtype>
             <lid>10</lid>
             </Articulation>
           <Note>
@@ -181,7 +181,7 @@
           <Note>
             <lid>14</lid>
             <Accidental>
-              <subtype>sharp</subtype>
+              <subtype>accidentalSharp</subtype>
               </Accidental>
             <pitch>42</pitch>
             <tpc>20</tpc>
@@ -364,7 +364,7 @@
             <Note>
               <lid>9</lid>
               <Accidental>
-                <subtype>sharp</subtype>
+                <subtype>accidentalSharp</subtype>
                 </Accidental>
               <pitch>56</pitch>
               <tpc>22</tpc>
@@ -376,7 +376,7 @@
             <lid>11</lid>
             <durationType>quarter</durationType>
             <Articulation>
-              <subtype>trill</subtype>
+              <subtype>ornamentTrill</subtype>
               <lid>10</lid>
               </Articulation>
             <Note>
@@ -393,7 +393,7 @@
             <Note>
               <lid>14</lid>
               <Accidental>
-                <subtype>sharp</subtype>
+                <subtype>accidentalSharp</subtype>
                 </Accidental>
               <pitch>42</pitch>
               <tpc>20</tpc>
@@ -435,7 +435,7 @@
             <lid>11</lid>
             <durationType>quarter</durationType>
             <Articulation>
-              <subtype>trill</subtype>
+              <subtype>ornamentTrill</subtype>
               <lid>10</lid>
               </Articulation>
             <Note>

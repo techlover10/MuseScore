@@ -15,8 +15,6 @@
 
 #include "element.h"
 
-class QPainter;
-
 namespace Ms {
 
 class MuseScoreView;
@@ -40,6 +38,11 @@ class Bracket : public Element {
 
       QPainterPath path;
 
+      SymId _braceSymbol;
+      // horizontal scaling factor for brace symbol. Cannot be equal to magY or depend on h
+      // because layout needs width of brace before knowing height of system...
+      qreal _magx;
+
    public:
       Bracket(Score*);
       virtual Bracket* clone() const override   { return new Bracket(*this); }
@@ -57,14 +60,14 @@ class Bracket : public Element {
       int level() const                { return _column;           }
       void setLevel(int v)             { _column = v;              }
       int span() const                 { return _span;             }
-      void setSpan(int v)              { _span = v;                }
+      void setSpan(int v);
       System* system() const           { return (System*)parent(); }
 
       virtual void setHeight(qreal) override;
       virtual qreal width() const override;
 
       virtual void draw(QPainter*) const override;
-      virtual void write(Xml& xml) const override;
+      virtual void write(XmlWriter& xml) const override;
       virtual void read(XmlReader&) override;
       virtual void layout() override;
 

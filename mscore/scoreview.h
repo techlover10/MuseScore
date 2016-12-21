@@ -34,7 +34,7 @@ class ChordRest;
 class Rest;
 class Element;
 class Page;
-class Xml;
+class XmlWriter;
 class Note;
 class Lasso;
 class ShadowNote;
@@ -54,7 +54,7 @@ class FretDiagram;
 class Bend;
 class TremoloBar;
 
-enum class Grip : signed char;
+enum class Grip : int;
 enum class POS : char;
 enum class MagIdx : char;
 
@@ -66,6 +66,7 @@ enum class TEXT : char {
       PART,
       SYSTEM,
       STAFF,
+      EXPRESSION,
       REHEARSAL_MARK,
       INSTRUMENT_CHANGE
       };
@@ -175,6 +176,11 @@ class ScoreView : public QWidget, public MuseScoreView {
       PositionCursor* _cursor;
       ShadowNote* shadowNote;
 
+      // Realtime state:      Note: always set allowRealtimeRests to desired value before starting a timer.
+      QTimer* realtimeTimer;   // multi-shot timer for advancing in automatic realtime mode
+      QTimer* extendNoteTimer; // single-shot timer for initial advancement when a note is held
+      bool allowRealtimeRests; // Allow entering rests in realtime mode? (See note above)
+
       // Loop In/Out marks in the score
       PositionCursor* _curLoopIn;
       PositionCursor* _curLoopOut;
@@ -196,7 +202,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       void objectPopup(const QPoint&, Element*);
       void measurePopup(const QPoint&, Measure*);
 
-      void saveChord(Xml&);
+      void saveChord(XmlWriter&);
 
       virtual bool event(QEvent* event);
       virtual bool gestureEvent(QGestureEvent*);
@@ -217,8 +223,7 @@ class ScoreView : public QWidget, public MuseScoreView {
 
       void setShadowNote(const QPointF&);
       void drawElements(QPainter& p,const QList<Element*>& el);
-      void dragTimeAnchorElement(const QPointF& pos);
-      void dragSymbol(const QPointF& pos);
+      bool dragTimeAnchorElement(const QPointF& pos);
       bool dragMeasureAnchorElement(const QPointF& pos);
       void updateGrips();
       virtual void lyricsTab(bool back, bool end, bool moveOnly) override;
@@ -234,8 +239,8 @@ class ScoreView : public QWidget, public MuseScoreView {
       void figuredBassTab(bool meas, bool back);
       void figuredBassTicksTab(int ticks);
       void figuredBassEndEdit();
-      void cmdInsertNote(int note);
-      void cmdAddPitch(int note, bool addFlag);
+      void realtimeAdvance(bool allowRests);
+      void cmdAddPitch(int note, bool addFlag, bool insert);
       void cmdAddFret(int fret);
       void cmdAddChordName();
       void cmdAddText(TEXT style);
@@ -280,6 +285,9 @@ class ScoreView : public QWidget, public MuseScoreView {
 
       void posChanged(POS pos, unsigned tick);
       void loopToggled(bool);
+      void triggerCmdRealtimeAdvance();
+      void cmdRealtimeAdvance();
+      void extendCurrentNote();
 
    public slots:
       void setViewRect(const QRectF&);
@@ -367,7 +375,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       bool editScoreViewDragTransition(QMouseEvent* e);
       bool editSelectTransition(QMouseEvent* me);
       void cmdAddSlur();
-      void cmdAddHairpin(bool);
+      virtual void cmdAddHairpin(HairpinType) override;
       void cmdAddNoteLine();
       virtual void cmdAddSlur(Note* firstNote, Note* lastNote);
 
@@ -406,7 +414,6 @@ class ScoreView : public QWidget, public MuseScoreView {
       void selectMeasure(int m);
       void postCmd(const char* cmd)   { sm->postEvent(new CommandEvent(cmd)); }
       void setFocusRect();
-      Element* getDragElement() const { return dragElement; }
       void changeVoice(int voice);
       virtual void drawBackground(QPainter* p, const QRectF& r) const;
       bool fotoScoreViewDragTest(QMouseEvent*);
@@ -472,9 +479,6 @@ class DragTransition : public QEventTransition
       DragTransition(ScoreView* c)
          : QEventTransition(c, QEvent::MouseMove), canvas(c) {}
       };
-
-extern int searchStaff(const Element* element);
-
 
 } // namespace Ms
 #endif

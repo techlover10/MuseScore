@@ -26,7 +26,6 @@ namespace Ms {
 LedgerLine::LedgerLine(Score* s)
    : Line(s, false)
       {
-      setZ(int(Element::Type::NOTE) * 100 - 50);
       setSelectable(false);
       _next = 0;
       }
@@ -60,7 +59,7 @@ qreal LedgerLine::measureXPos() const
 
 void LedgerLine::layout()
       {
-      setLineWidth(score()->styleS(StyleIdx::ledgerLineWidth) * chord()->mag());
+      setLineWidth(score()->styleP(StyleIdx::ledgerLineWidth) * chord()->mag());
       if (staff())
             setColor(staff()->color());
       Line::layout();
@@ -72,7 +71,7 @@ void LedgerLine::layout()
 
 void LedgerLine::draw(QPainter* painter) const
       {
-      if(chord()->crossMeasure() == CrossMeasure::SECOND)
+      if (chord()->crossMeasure() == CrossMeasure::SECOND)
             return;
       Line::draw(painter);
       }

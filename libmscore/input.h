@@ -27,6 +27,14 @@ class Segment;
 class Score;
 
 //---------------------------------------------------------
+//   NoteEntryMethod
+//---------------------------------------------------------
+
+enum class NoteEntryMethod : char {
+      STEPTIME, REPITCH, RHYTHM, REALTIME_AUTO, REALTIME_MANUAL
+      };
+
+//---------------------------------------------------------
 //   InputState
 //---------------------------------------------------------
 
@@ -39,12 +47,13 @@ class InputState {
       Segment*    _lastSegment { 0 };
       Segment*    _segment     { 0 };                       // current segment
       int         _string      { VISUAL_STRING_NONE };      // visual string selected for input (TAB staves only)
-      bool        _repitchMode { false };
       bool _rest               { false };              // rest mode
       NoteType _noteType       { NoteType::NORMAL };
       Beam::Mode _beamMode       { Beam::Mode::AUTO };
       bool _noteEntryMode      { false };
+      NoteEntryMethod _noteEntryMethod { NoteEntryMethod::STEPTIME };
       Slur* _slur              { 0     };
+      bool _insertMode         { false };
 
       Segment* nextInputPos() const;
 
@@ -79,9 +88,6 @@ class InputState {
       int string() const                  { return _string;             }
       void setString(int val)             { _string = val;              }
 
-      bool repitchMode() const            { return _repitchMode;    }
-      void setRepitchMode(bool val)       { _repitchMode = val;     }
-
       StaffGroup staffGroup() const;
 
       bool rest() const                   { return _rest; }
@@ -96,8 +102,15 @@ class InputState {
       bool noteEntryMode() const          { return _noteEntryMode; }
       void setNoteEntryMode(bool v)       { _noteEntryMode = v; }
 
+      NoteEntryMethod noteEntryMethod() const               { return _noteEntryMethod; }
+      void setNoteEntryMethod(NoteEntryMethod m)            { _noteEntryMethod = m; }
+      bool usingNoteEntryMethod(NoteEntryMethod m) const    { return m == noteEntryMethod(); }
+
       Slur* slur() const                  { return _slur; }
       void setSlur(Slur* s)               { _slur = s; }
+
+      bool insertMode() const             { return _insertMode; }
+      void setInsertMode(bool val)        { _insertMode = val; }
 
       void update(Element* e);
       void moveInputPos(Element* e);

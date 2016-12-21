@@ -23,6 +23,7 @@
 #include "stringdata.h"
 #include "stafftype.h"
 #include "sym.h"
+#include "chordrest.h"
 
 namespace Ms {
 
@@ -56,6 +57,39 @@ Staff* Part::staff(int idx) const
       return _staves[idx];
       }
 
+
+//---------------------------------------------------------
+//   readProperties
+//---------------------------------------------------------
+
+bool Part::readProperties(XmlReader& e)
+      {
+      const QStringRef& tag(e.name());
+      if (tag == "Staff") {
+            Staff* staff = new Staff(score());
+            staff->setPart(this);
+            score()->staves().push_back(staff);
+            _staves.push_back(staff);
+            staff->read(e);
+            }
+      else if (tag == "Instrument") {
+            Instrument* instr = new Instrument;
+            instr->read(e, this);
+            setInstrument(instr, -1);
+            }
+      else if (tag == "name")
+            instrument()->setLongName(e.readElementText());
+      else if (tag == "shortName")
+            instrument()->setShortName(e.readElementText());
+      else if (tag == "trackName")
+            _partName = e.readElementText();
+      else if (tag == "show")
+            _show = e.readInt();
+      else
+            return false;
+      return true;
+      }
+
 //---------------------------------------------------------
 //   read
 //---------------------------------------------------------
@@ -63,35 +97,8 @@ Staff* Part::staff(int idx) const
 void Part::read(XmlReader& e)
       {
       while (e.readNextStartElement()) {
-            const QStringRef& tag(e.name());
-            if (tag == "Staff") {
-                  Staff* staff = new Staff(score());
-                  staff->setPart(this);
-                  score()->staves().push_back(staff);
-                  _staves.push_back(staff);
-                  staff->read(e);
-                  }
-            else if (tag == "Instrument") {
-                  Instrument* instr = new Instrument;
-                  instr->read(e, this);
-                  setInstrument(instr, -1);
-                  Staff* s = staff(0);
-                  // adjust drumset line numbers for pre-2.1 scores
-                  Drumset* ds = instr->drumset();
-                  int lld = s ? qRound(s->logicalLineDistance()) : 1;
-                  if (score()->mscVersion() < 207 && ds && lld > 1) {
-                        for (int i = 0; i < DRUM_INSTRUMENTS; ++i)
-                              ds->drum(i).line /= lld;
-                        }
-                  }
-            else if (tag == "name")
-                  instrument()->setLongName(e.readElementText());
-            else if (tag == "shortName")
-                  instrument()->setShortName(e.readElementText());
-            else if (tag == "trackName")
-                  _partName = e.readElementText();
-            else if (tag == "show")
-                  _show = e.readInt();
+            if (readProperties(e))
+                 ;
             else
                   e.unknown();
             }
@@ -103,7 +110,7 @@ void Part::read(XmlReader& e)
 //   write
 //---------------------------------------------------------
 
-void Part::write(Xml& xml) const
+void Part::write(XmlWriter& xml) const
       {
       xml.stag("Part");
       foreach(const Staff* staff, _staves)
@@ -464,7 +471,7 @@ void Part::setShortName(const QString& s)
 
 void Part::setPlainLongName(const QString& s)
       {
-      setLongName(Xml::xmlString(s));
+      setLongName(XmlWriter::xmlString(s));
       }
 
 //---------------------------------------------------------
@@ -473,7 +480,7 @@ void Part::setPlainLongName(const QString& s)
 
 void Part::setPlainShortName(const QString& s)
       {
-      setShortName(Xml::xmlString(s));
+      setShortName(XmlWriter::xmlString(s));
       }
 
 //---------------------------------------------------------
@@ -598,8 +605,9 @@ int Part::lyricCount()
       Segment::Type st = Segment::Type::ChordRest;
       for (Segment* seg = score()->firstMeasure()->first(st); seg; seg = seg->next1(st)) {
             for (int i = startTrack(); i < endTrack() ; ++i) {
-                  if (seg->lyricsList(i))
-                        count += seg->lyricsList(i)->size();
+                  ChordRest* cr = toChordRest(seg->element(i));
+                  if (cr)
+                        count += cr->lyrics().size();
                   }
             }
       return count;
@@ -633,7 +641,7 @@ bool Part::hasPitchedStaff()
       if (!staves())
             return false;
       for (Staff* s : *staves()) {
-            if (s && s->isPitchedStaff())
+            if (s && s->isPitchedStaff(0))
                   return true;
             }
       return false;
@@ -648,7 +656,7 @@ bool Part::hasTabStaff()
       if (!staves())
             return false;
       for (Staff* s : *staves()) {
-            if (s && s->isTabStaff())
+            if (s && s->isTabStaff(0))
                   return true;
             }
       return false;
@@ -663,7 +671,7 @@ bool Part::hasDrumStaff()
       if (!staves())
             return false;
       for (Staff* s : *staves()) {
-            if (s && s->isDrumStaff())
+            if (s && s->isDrumStaff(0))
                   return true;
             }
       return false;

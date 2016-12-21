@@ -39,8 +39,6 @@
 
 namespace Ms {
 
-extern bool useFactorySettings;
-
 //---------------------------------------------------------
 //   DrumrollEditor
 //---------------------------------------------------------
@@ -48,6 +46,7 @@ extern bool useFactorySettings;
 DrumrollEditor::DrumrollEditor(QWidget* parent)
    : QMainWindow(parent)
       {
+      setObjectName("Drumroll");
       setWindowTitle(QString("MuseScore"));
 //      setIconSize(QSize(preferences.iconWidth, preferences.iconHeight));
 
@@ -57,8 +56,14 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
       layout->setSpacing(0);
 
       QToolBar* tb = addToolBar(tr("Toolbar 1"));
-      tb->addAction(getAction("undo"));
-      tb->addAction(getAction("redo"));
+      if (qApp->layoutDirection() == Qt::LayoutDirection::LeftToRight) {
+            tb->addAction(getAction("undo"));
+            tb->addAction(getAction("redo"));
+            }
+      else {
+            tb->addAction(getAction("redo"));
+            tb->addAction(getAction("undo"));
+            }
       tb->addSeparator();
 #ifdef HAS_MIDI
       tb->addAction(getAction("midi-on"));
@@ -160,13 +165,7 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
       addActions(ag->actions());
       connect(ag, SIGNAL(triggered(QAction*)), SLOT(cmd(QAction*)));
 
-      if (!useFactorySettings) {
-            QSettings settings;
-            settings.beginGroup("Drumroll");
-            resize(settings.value("size", QSize(900, 500)).toSize());
-            move(settings.value("pos", QPoint(10, 10)).toPoint());
-            settings.endGroup();
-            }
+      readSettings();
       }
 
 //---------------------------------------------------------
@@ -175,11 +174,16 @@ DrumrollEditor::DrumrollEditor(QWidget* parent)
 
 void DrumrollEditor::writeSettings()
       {
-      QSettings settings;
-      settings.beginGroup("Drumroll");
-      settings.setValue("size", size());
-      settings.setValue("pos", QWidget::pos());
-      settings.endGroup();
+      MuseScore::saveGeometry(this);
+      }
+
+//---------------------------------------------------------
+//   readSettings
+//---------------------------------------------------------
+
+void DrumrollEditor::readSettings()
+      {
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -190,7 +194,7 @@ void DrumrollEditor::setStaff(Staff* st)
       {
       staff = st;
       _score = staff->score();
-      setWindowTitle(tr("MuseScore: <%1> Staff: %2").arg(_score->fileInfo()->completeBaseName()).arg(st->idx()));
+      setWindowTitle(tr("MuseScore: <%1> Staff: %2").arg(_score->masterScore()->fileInfo()->completeBaseName()).arg(st->idx()));
       TempoMap* tl = _score->tempomap();
       TimeSigMap*  sl = _score->sigmap();
       for (int i = 0; i < 3; ++i)

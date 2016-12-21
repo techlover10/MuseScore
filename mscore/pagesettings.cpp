@@ -3,7 +3,7 @@
 //  Linux Music Score Editor
 //  $Id: pagesettings.cpp 5568 2012-04-22 10:08:43Z wschweer $
 //
-//  Copyright (C) 2002-2011 Werner Schweer and others
+//  Copyright (C) 2002-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -35,8 +35,9 @@ namespace Ms {
 //---------------------------------------------------------
 
 PageSettings::PageSettings(QWidget* parent)
-   : QDialog(parent)
+   : AbstractDialog(parent)
       {
+      setObjectName("PageSettings");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       setModal(true);
@@ -53,12 +54,16 @@ PageSettings::PageSettings(QWidget* parent)
             mmButton->setChecked(true);
       else
             inchButton->setChecked(true);
+
+      MuseScore::restoreGeometry(this);
+
       connect(mmButton,             SIGNAL(clicked()),            SLOT(mmClicked()));
       connect(inchButton,           SIGNAL(clicked()),            SLOT(inchClicked()));
       connect(buttonApply,          SIGNAL(clicked()),            SLOT(apply()));
       connect(buttonApplyToAllParts,SIGNAL(clicked()),            SLOT(applyToAllParts()));
       connect(buttonOk,             SIGNAL(clicked()),            SLOT(ok()));
-      connect(landscape,            SIGNAL(toggled(bool)),        SLOT(landscapeToggled(bool)));
+      connect(portraitButton,       SIGNAL(clicked()),            SLOT(portraitClicked()));
+      connect(landscapeButton,      SIGNAL(clicked()),            SLOT(landscapeClicked()));
       connect(twosided,             SIGNAL(toggled(bool)),        SLOT(twosidedToggled(bool)));
       connect(pageHeight,           SIGNAL(valueChanged(double)), SLOT(pageHeightChanged(double)));
       connect(pageWidth,            SIGNAL(valueChanged(double)), SLOT(pageWidthChanged(double)));
@@ -81,6 +86,16 @@ PageSettings::PageSettings(QWidget* parent)
 
 PageSettings::~PageSettings()
       {
+      }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void PageSettings::hideEvent(QHideEvent* ev)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(ev);
       }
 
 //---------------------------------------------------------
@@ -241,7 +256,9 @@ void PageSettings::updateValues()
             evenPageLeftMargin->setValue(oddPageLeftMargin->value());
             }
 
-      landscape->setChecked(pf->width() > pf->height());
+      landscapeButton->setChecked(pf->width() > pf->height());
+      portraitButton->setChecked(pf->width() <= pf->height());
+
       twosided->setChecked(pf->twosided());
 
       pageOffsetEntry->setValue(sc->pageNumberOffset() + 1);
@@ -270,15 +287,27 @@ void PageSettings::mmClicked()
       }
 
 //---------------------------------------------------------
-//   landscapeToggled
+//   portraitClicked
 //---------------------------------------------------------
 
-void PageSettings::landscapeToggled(bool flag)
+void PageSettings::portraitClicked()
       {
       PageFormat pf;
-      pf.copy(*preview->score()->pageFormat());
-      if (flag ^ (pf.width() > pf.height()))
-            pf.setSize(QSizeF(pf.height(), pf.width()));
+      double f  = mmUnit ? 1.0/INCH : 1.0;
+      pf.setPrintableWidth(pf.width() - (oddPageLeftMargin->value() + oddPageRightMargin->value())  * f);
+      preview->score()->setPageFormat(pf);
+      updateValues();
+      updatePreview(0);
+      }
+
+//---------------------------------------------------------
+//   landscapeClicked
+//---------------------------------------------------------
+
+void PageSettings::landscapeClicked()
+      {
+      PageFormat pf;
+      pf.setSize(QSizeF(pf.height(), pf.width()));
       double f  = mmUnit ? 1.0/INCH : 1.0;
       pf.setPrintableWidth(pf.width() - (oddPageLeftMargin->value() + oddPageRightMargin->value())  * f);
       preview->score()->setPageFormat(pf);

@@ -35,8 +35,7 @@ FretDiagram::FretDiagram(Score* score)
       {
       setFlags(ElementFlag::MOVABLE | ElementFlag::ON_STAFF | ElementFlag::SELECTABLE);
       font.setFamily("FreeSans");
-      int size = lrint(4.0 * mag());
-      font.setPixelSize(size);
+      font.setPointSize(4.0 * mag());
       }
 
 FretDiagram::FretDiagram(const FretDiagram& f)
@@ -286,8 +285,12 @@ void FretDiagram::draw(QPainter* painter) const
             qreal y = fretDist * i;
             painter->drawLine(QLineF(0.0, y, x2, y));
             }
-      painter->setFont(font);
-      QFontMetricsF fm(font);
+      QFont scaledFont(font);
+      scaledFont.setPointSizeF(font.pointSize() * _userMag);
+      QFontMetricsF fm(scaledFont, MScore::paintDevice());
+      scaledFont.setPointSizeF(scaledFont.pointSizeF() * MScore::pixelRatio);
+
+      painter->setFont(scaledFont);
       qreal dotd = stringDist * .6;
 
       for (int i = 0; i < _strings; ++i) {
@@ -325,7 +328,7 @@ void FretDiagram::draw(QPainter* painter) const
       if (_fretOffset > 0) {
             qreal fretNumMag = score()->styleD(StyleIdx::fretNumMag);
             QFont scaledFont(font);
-            scaledFont.setPixelSize(font.pixelSize() * fretNumMag * _userMag);
+            scaledFont.setPointSizeF(font.pointSize() * fretNumMag * _userMag * MScore::pixelRatio);
             painter->setFont(scaledFont);
             if (score()->styleI(StyleIdx::fretNumPos) == 0)
                   painter->drawText(QRectF(-stringDist *.4, .0, .0, fretDist),
@@ -358,7 +361,9 @@ void FretDiagram::layout()
       qreal x = -((dotd+lw1) * .5);
       w += dotd + lw1;
       if (_marker) {
-            QFontMetricsF fm(font);
+            QFont scaledFont(font);
+            scaledFont.setPointSize(font.pointSize() * _userMag);
+            QFontMetricsF fm(scaledFont, MScore::paintDevice());
             y = -(fretDist * .1 + fm.height());
             h -= y;
             }
@@ -370,9 +375,11 @@ void FretDiagram::layout()
       if (_harmony)
             _harmony->layout();
 
-      if (parent() == 0 || parent()->type() != Element::Type::SEGMENT)
+      if (!parent() || !parent()->isSegment()) {
+            setPos(QPointF());
             return;
-//      Measure* m     = static_cast<Segment*>(parent())->measure();
+            }
+//      Measure* m     = toSegment(parent())->measure();
 //      int idx        = staffIdx();
 //      MStaff* mstaff = m->mstaff(idx);
 //      qreal dist = -(bbox().top());
@@ -383,7 +390,7 @@ void FretDiagram::layout()
 //   write
 //---------------------------------------------------------
 
-void FretDiagram::write(Xml& xml) const
+void FretDiagram::write(XmlWriter& xml) const
       {
       if (!xml.canWrite(this))
             return;
@@ -627,7 +634,7 @@ void FretDiagram::readMusicXML(XmlReader& e)
 //   Write MusicXML
 //---------------------------------------------------------
 
-void FretDiagram::writeMusicXML(Xml& xml) const
+void FretDiagram::writeMusicXML(XmlWriter& xml) const
       {
       qDebug("FretDiagram::writeMusicXML() this %p harmony %p", this, _harmony);
       int _strings = strings();

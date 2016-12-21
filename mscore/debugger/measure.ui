@@ -26,19 +26,27 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
-         <widget class="QPushButton" name="prevButton">
+         <widget class="QToolButton" name="prevButton">
           <property name="toolTip">
            <string notr="true"/>
           </property>
           <property name="text">
-           <string notr="true">previous</string>
+           <string notr="true"/>
+          </property>
+          <property name="icon">
+           <iconset resource="../musescore.qrc">
+            <normaloff>:/data/icons/go-previous.svg</normaloff>:/data/icons/go-previous.svg</iconset>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="nextButton">
+         <widget class="QToolButton" name="nextButton">
           <property name="text">
-           <string notr="true">next</string>
+           <string notr="true"/>
+          </property>
+          <property name="icon">
+           <iconset resource="../musescore.qrc">
+            <normaloff>:/data/icons/go-next.svg</normaloff>:/data/icons/go-next.svg</iconset>
           </property>
          </widget>
         </item>
@@ -510,6 +518,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../musescore.qrc"/>
+ </resources>
  <connections/>
 </ui>

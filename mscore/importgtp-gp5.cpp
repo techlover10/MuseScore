@@ -49,6 +49,7 @@
 #include "libmscore/fingering.h"
 #include "libmscore/notedot.h"
 #include "libmscore/stafftext.h"
+#include "libmscore/sym.h"
 #include "preferences.h"
 
 
@@ -427,17 +428,17 @@ void GuitarPro5::readTracks()
                   clefId = ClefType::PERC;
                   // instr->setUseDrumset(DrumsetKind::GUITAR_PRO);
                   instr->setDrumset(gpDrumset);
-                  staff->setStaffType(StaffType::preset(StaffTypes::PERC_DEFAULT));
+                  staff->setStaffType(0, StaffType::preset(StaffTypes::PERC_DEFAULT));
                   }
             else if (patch >= 24 && patch < 32)
-                  clefId = ClefType::G3;
+                  clefId = ClefType::G8_VB;
             else if (patch >= 32 && patch < 40)
-                  clefId = ClefType::F8;
+                  clefId = ClefType::F8_VB;
             Measure* measure = score->firstMeasure();
             Clef* clef = new Clef(score);
             clef->setClefType(clefId);
             clef->setTrack(i * VOICES);
-            Segment* segment = measure->getSegment(Segment::Type::Clef, 0);
+            Segment* segment = measure->getSegment(Segment::Type::HeaderClef, 0);
             segment->add(clef);
 
             if (capo > 0) {
@@ -712,7 +713,7 @@ bool GuitarPro5::readNoteEffects(Note* note)
       if (modMask2 & EFFECT_STACATTO) {
             Chord* chord = note->chord();
             Articulation* a = new Articulation(chord->score());
-            a->setArticulationType(ArticulationType::Staccato);
+            a->setSymId(SymId::articStaccatoAbove);
             chord->add(a);
             }
       if (modMask2 & EFFECT_PALM_MUTE)
@@ -753,7 +754,7 @@ bool GuitarPro5::readNoteEffects(Note* note)
 
             // add the trill articulation to the note
             Articulation* art = new Articulation(note->score());
-            art->setArticulationType(ArticulationType::Trill);
+            art->setSymId(SymId::ornamentTrill);
             if (!note->score()->addArticulation(note, art))
                   delete art;
 
@@ -863,7 +864,7 @@ bool GuitarPro5::readNote(int string, Note* note)
       // check if a note is supposed to be accented, and give it the marcato type
       if (noteBits & NOTE_MARCATO) {
             Articulation* art = new Articulation(note->score());
-            art->setArticulationType(ArticulationType::Marcato);
+            art->setSymId(SymId::articMarcatoAbove);
             if (!note->score()->addArticulation(note, art))
                   delete art;
       }
@@ -871,7 +872,7 @@ bool GuitarPro5::readNote(int string, Note* note)
       // check if a note is supposed to be accented, and give it the sforzato type
       if (noteBits & NOTE_SFORZATO) {
             Articulation* art = new Articulation(note->score());
-            art->setArticulationType(ArticulationType::Sforzatoaccent);
+            art->setSymId(SymId::articAccentAbove);
             if (!note->score()->addArticulation(note, art))
                   delete art;
             }

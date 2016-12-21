@@ -54,6 +54,7 @@ class ChordRest : public DurationElement {
       Q_PROPERTY(int            durationType  READ durationTypeTicks  WRITE setDurationType)
       Q_PROPERTY(bool           small         READ small              WRITE undoSetSmall)
 
+      ElementList _el;
       TDuration _durationType;
       int _staffMove;         // -1, 0, +1, used for crossbeaming
 
@@ -61,10 +62,10 @@ class ChordRest : public DurationElement {
 
    protected:
       QVector<Articulation*> _articulations;
-      Beam* _beam;
-      QVector<Lyrics*> _lyricsList;
+      std::vector<Lyrics*> _lyrics;
       TabDurationSymbol* _tabDur;         // stores a duration symbol in tablature staves
 
+      Beam* _beam;
       Beam::Mode _beamMode;
       bool _up;                           // actual stem direction
       bool _small;
@@ -87,7 +88,7 @@ class ChordRest : public DurationElement {
       virtual Segment* segment() const  { return (Segment*)parent(); }
       virtual Measure* measure() const = 0;
 
-      virtual void writeProperties(Xml& xml) const;
+      virtual void writeProperties(XmlWriter& xml) const;
       virtual bool readProperties(XmlReader&);
       virtual void scanElements(void* data, void (*func)(void*, Element*), bool all=true);
 
@@ -146,13 +147,18 @@ class ChordRest : public DurationElement {
 
       virtual void setTrack(int val) override;
 
-      const QVector<Lyrics*>& lyricsList() const { return _lyricsList; }
-      QVector<Lyrics*>& lyricsList()             { return _lyricsList; }
-      Lyrics* lyrics(int no)                   { return _lyricsList.value(no); }
+      const std::vector<Lyrics*>& lyrics() const { return _lyrics; }
+      std::vector<Lyrics*>& lyrics()             { return _lyrics; }
+      Lyrics* lyrics(int verse, Placement) const;
+      int lastVerse(Placement) const;
+      void flipLyrics(Lyrics*);
 
       virtual void add(Element*);
       virtual void remove(Element*);
       void removeDeleteBeam(bool beamed);
+
+      ElementList& el()                            { return _el; }
+      const ElementList& el() const                { return _el; }
 
       CrossMeasure crossMeasure() const            { return _crossMeasure; }
       void setCrossMeasure(CrossMeasure val)       { _crossMeasure = val;  }
@@ -168,7 +174,7 @@ class ChordRest : public DurationElement {
       bool isGrace() const;
       bool isGraceBefore() const;
       bool isGraceAfter() const;
-      void writeBeam(Xml& xml);
+      void writeBeam(XmlWriter& xml);
       Segment* nextSegmentAfterCR(Segment::Type types) const;
 
       virtual void setScore(Score* s) override;
@@ -178,6 +184,9 @@ class ChordRest : public DurationElement {
       virtual Shape shape() const override;
       virtual void layoutStem1() {};
       virtual void computeUp()   { _up = true; };
+
+      bool isFullMeasureRest() const { return _durationType == TDuration::DurationType::V_MEASURE; }
+      virtual void removeMarkings(bool keepTremolo = false);
       };
 
 

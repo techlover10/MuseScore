@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # do not build mac for PR
-if [ "${TRAVIS_PULL_REQUEST}" = "true" ]; then
+if [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then
   exit 0
 fi
 
@@ -22,6 +22,12 @@ brew install bottles/portaudio*
 # additional dependencies
 brew install jack lame
 
+#update ruby
+rvm uninstall 2.0.0-p648
+rvm uninstall 2.0.0-p643
+rvm uninstall 2.0.0
+rvm get head
+
 #install Qt
 which -s qmake
 QT_INSTALLED=$?
@@ -39,15 +45,15 @@ if [[ "$QMAKE_VERSION" != "${QT_LONG_VERSION}" ]]; then
   echo "Downloading Qt"
   wget -c --no-check-certificate -nv https://download.qt.io/archive/qt/${QT_SHORT_VERSION}/${QT_LONG_VERSION}/${QT_INSTALLER_FILENAME}
   hdiutil mount ${QT_INSTALLER_FILENAME}
-
-  QT_INSTALLER_EXE=/Volumes/${QT_INSTALLER_ROOT}/${QT_INSTALLER_ROOT}.app/Contents/MacOS/${QT_INSTALLER_ROOT}
+  cp -rf /Volumes/${QT_INSTALLER_ROOT}/${QT_INSTALLER_ROOT}.app $HOME/${QT_INSTALLER_ROOT}.app
+  QT_INSTALLER_EXE=$HOME/${QT_INSTALLER_ROOT}.app/Contents/MacOS/${QT_INSTALLER_ROOT}
 
   echo "Installing Qt"
   ./build/travis/job_macos/extract-qt-installer $QT_INSTALLER_EXE $QT_PATH
+  rm -rf $HOME/${QT_INSTALLER_ROOT}.app
 else
   echo "Qt ${QT_LONG_VERSION} already installed"
 fi
-
 
 
 

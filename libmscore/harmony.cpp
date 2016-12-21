@@ -189,7 +189,7 @@ Harmony::~Harmony()
 //   write
 //---------------------------------------------------------
 
-void Harmony::write(Xml& xml) const
+void Harmony::write(XmlWriter& xml) const
       {
       if (!xml.canWrite(this))
             return;
@@ -203,7 +203,7 @@ void Harmony::write(Xml& xml) const
                   Segment* segment = static_cast<Segment*>(parent());
                   int tick = segment ? segment->tick() : -1;
                   const Interval& interval = part()->instrument(tick)->transpose();
-                  if (xml.clipboardmode && !score()->styleB(StyleIdx::concertPitch) && interval.chromatic) {
+                  if (xml.clipboardmode() && !score()->styleB(StyleIdx::concertPitch) && interval.chromatic) {
                         rRootTpc = transposeTpc(_rootTpc, interval, true);
                         rBaseTpc = transposeTpc(_baseTpc, interval, true);
                         }
@@ -1152,7 +1152,8 @@ void Harmony::draw(QPainter* painter) const
       if (textStyle().hasFrame()) {
             if (textStyle().frameWidth().val() != 0.0) {
                   QColor color = frameColor();
-                  QPen pen(color, textStyle().frameWidth().val() * spatium());
+                  QPen pen(color, textStyle().frameWidth().val() * spatium(), Qt::SolidLine,
+                     Qt::SquareCap, Qt::MiterJoin);
                   painter->setPen(pen);
                   }
             else
@@ -1162,17 +1163,19 @@ void Harmony::draw(QPainter* painter) const
             if (textStyle().circle())
                   painter->drawArc(frame, 0, 5760);
             else {
-                  int r2 = textStyle().frameRound() * lrint((frame.width() / frame.height()));
+                  int r2 = textStyle().frameRound();
                   if (r2 > 99)
                         r2 = 99;
-                  painter->drawRoundRect(frame, textStyle().frameRound(), r2);
+                  painter->drawRoundedRect(frame, textStyle().frameRound(), r2);
                   }
             }
       painter->setBrush(Qt::NoBrush);
       QColor color = textColor();
       painter->setPen(color);
       foreach(const TextSegment* ts, textList) {
-            painter->setFont(ts->font);
+            QFont f(ts->font);
+            f.setPointSizeF(f.pointSizeF() * MScore::pixelRatio);
+            painter->setFont(f);
             painter->drawText(QPointF(ts->x, ts->y), ts->text);
             }
       }
@@ -1193,7 +1196,7 @@ TextSegment::TextSegment(const QString& s, const QFont& f, qreal x, qreal y)
 
 qreal TextSegment::width() const
       {
-      QFontMetricsF fm(font);
+      QFontMetricsF fm(font, MScore::paintDevice());
 #if 1
       return fm.width(text);
 #else
@@ -1214,7 +1217,7 @@ qreal TextSegment::width() const
 
 QRectF TextSegment::boundingRect() const
       {
-      QFontMetricsF fm(font);
+      QFontMetricsF fm(font, MScore::paintDevice());
       return fm.boundingRect(text);
       }
 
@@ -1224,7 +1227,7 @@ QRectF TextSegment::boundingRect() const
 
 QRectF TextSegment::tightBoundingRect() const
       {
-      QFontMetricsF fm(font);
+      QFontMetricsF fm(font, MScore::paintDevice());
       return fm.tightBoundingRect(text);
       }
 
@@ -1358,15 +1361,15 @@ void Harmony::render(const TextStyle* st)
       fontList.clear();
       foreach(ChordFont cf, chordList->fonts) {
             if (cf.family.isEmpty() || cf.family == "default")
-                  fontList.append(st->fontPx(spatium() * cf.mag));
+                  fontList.append(st->font(spatium() * cf.mag));
             else {
-                  QFont ff(st->fontPx(spatium() * cf.mag));
+                  QFont ff(st->font(spatium() * cf.mag));
                   ff.setFamily(cf.family);
                   fontList.append(ff);
                   }
             }
       if (fontList.empty())
-            fontList.append(st->fontPx(spatium()));
+            fontList.append(st->font(spatium()));
 
       foreach(const TextSegment* s, textList)
             delete s;

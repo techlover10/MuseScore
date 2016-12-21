@@ -16,7 +16,7 @@
 namespace Ms {
 
 class XmlReader;
-
+enum class StyleIdx : int;
 
 //---------------------------------------------------------
 //   PropertyStyle
@@ -30,12 +30,13 @@ enum class PropertyStyle : char {
 //   Element Properties
 //------------------------------------------------------------------------
 
-enum class P_ID : unsigned char {
+enum class P_ID : int {
       SUBTYPE,
       SELECTED,
       GENERATED,
       COLOR,
       VISIBLE,
+      Z,
       SMALL,
       SHOW_COURTESY,
       LINE_TYPE,
@@ -130,7 +131,6 @@ enum class P_ID : unsigned char {
       NUMBERS_ONLY,
       TRILL_TYPE,
 
-      HAIRPIN_TEXTLINE,
       HAIRPIN_CIRCLEDTIP,
       HAIRPIN_TYPE,
       HAIRPIN_HEIGHT,
@@ -150,7 +150,6 @@ enum class P_ID : unsigned char {
 
       REPEAT_END,
       REPEAT_START,
-      REPEAT_MEASURE,
       REPEAT_JUMP,
 
       MEASURE_NUMBER_MODE,
@@ -205,6 +204,7 @@ enum class P_ID : unsigned char {
       SLUR_UOFF3,
       SLUR_UOFF4,
       STAFF_MOVE,
+      VERSE,
       SYLLABIC,
       LYRIC_TICKS,
       VOLTA_ENDING,
@@ -233,6 +233,28 @@ enum class P_ID : unsigned char {
       SYSTEM_BRACKET,
       GAP,
       AUTOPLACE,
+      DASH_LINE_LEN,
+      DASH_GAP_LEN,
+      TICK,
+      PLAYBACK_VOICE1,
+      PLAYBACK_VOICE2,
+      PLAYBACK_VOICE3,
+      PLAYBACK_VOICE4,
+      SYMBOL,
+
+      PLAY_REPEATS,
+      CREATE_SYSTEM_HEADER,
+      STAFF_LINES,
+      LINE_DISTANCE,
+      STEP_OFFSET,
+
+      STAFF_SHOW_BARLINES,
+      STAFF_SHOW_LEDGERLINES,
+      STAFF_SLASH_STYLE,
+      STAFF_NOTEHEAD_SCHEME,
+      STAFF_GEN_CLEF,
+      STAFF_GEN_TIMESIG,
+      STAFF_GEN_KEYSIG,
 
       END
       };
@@ -267,6 +289,9 @@ enum class P_TYPE : char {
       INT_LIST,
       GLISSANDO_STYLE,
       BARLINE_TYPE,
+      HEAD_TYPE,         // enum class Notehead::Type
+      HEAD_GROUP,       // enum class Notehead::Group
+      ZERO_INT,         // displayed with offset +1
       };
 
 extern QVariant getProperty(P_ID type, XmlReader& e);

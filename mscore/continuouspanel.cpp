@@ -120,10 +120,17 @@ void ContinuousPanel::paint(const QRect&, QPainter& painter)
       if (!_currentMeasure)
             return;
 
+      // Don't show panel if staff names are visible
+      if (_currentMeasure == _score->firstMeasure() && _sv->toPhysical(_currentMeasure->canvasPos()).x() > 0) {
+            _visible = false;
+            return;
+            }
+
       qreal _xPosMeasure       = _currentMeasure->canvasX();
       qreal _measureWidth      = _currentMeasure->width();
       int tick                 = _currentMeasure->tick();
       Fraction _currentTimeSig = _currentMeasure->timesig();
+      //qDebug() << "_sv->xoffset()=" <<_sv->xoffset() << " _sv->mag()="<< _sv->mag() <<" s->x=" << s->x() << " width=" << _width << " currentMeasure=" << _currentMeasure->x() << " _xPosMeasure=" << _xPosMeasure;
 
       //---------------------------------------------------------
       //   findElementWidths
@@ -253,13 +260,6 @@ void ContinuousPanel::paint(const QRect&, QPainter& painter)
 
       //====================
 
-      // Don't show panel if staff names are visible
-      if (_sv->xoffset() / _sv->mag() + _xPosMeasure > 0) {
-            _visible = false;
-            return;
-            }
-      //qDebug() << "_sv->xoffset()=" <<_sv->xoffset() << " _sv->mag()="<< _sv->mag() <<" s->x=" << s->x() << " width=" << _width << " currentMeasue=" << _currentMeasure->x() << " _xPosMeasure=" << _xPosMeasure;
-
       painter.save();
 
       // Draw colored rectangle
@@ -325,11 +325,11 @@ void ContinuousPanel::paint(const QRect&, QPainter& painter)
 
                   // Draw staff lines
                   StaffLines newStaffLines(*toStaffLines(e));
-                  newStaffLines.setWidth(bg.width());
                   newStaffLines.setParent(parent);
                   newStaffLines.setTrack(e->track());
                   newStaffLines.layout();
                   newStaffLines.setColor(color);
+                  newStaffLines.setWidth(bg.width());
                   newStaffLines.draw(&painter);
 
                   // Draw barline
@@ -380,8 +380,9 @@ void ContinuousPanel::paint(const QRect&, QPainter& painter)
                   clef.setTrack(e->track());
                   clef.setColor(color);
                   clef.layout();
-                  posX += _score->styleP(StyleIdx::clefLeftMargin) + _widthClef;
-                  clef.drawAt(&painter, QPointF(posX, 0.0));
+                  posX += _score->styleP(StyleIdx::clefLeftMargin);
+                  clef.drawAt(&painter, QPointF(posX, clef.pos().y()));
+                  posX += _widthClef;
 
                   // Draw the current KeySignature
                   KeySig newKs(_score);

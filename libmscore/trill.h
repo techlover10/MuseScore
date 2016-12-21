@@ -15,8 +15,6 @@
 
 #include "line.h"
 
-class QPainter;
-
 namespace Ms {
 
 class Trill;
@@ -36,8 +34,8 @@ class TrillSegment : public LineSegment {
 
    protected:
    public:
-      TrillSegment(Score* s) : LineSegment(s) {}
-      Trill* trill() const                { return (Trill*)spanner(); }
+      TrillSegment(Score* s) : LineSegment(s)      {}
+      Trill* trill() const                         { return (Trill*)spanner(); }
       virtual Element::Type type() const override  { return Element::Type::TRILL_SEGMENT; }
       virtual TrillSegment* clone() const override { return new TrillSegment(*this); }
       virtual void draw(QPainter*) const override;
@@ -50,6 +48,7 @@ class TrillSegment : public LineSegment {
       virtual void add(Element*) override;
       virtual void remove(Element*) override;
       virtual void scanElements(void* data, void (*func)(void*, Element*), bool all) override;
+      Shape shape() const override;
 
       std::vector<SymId> symbols() const           { return _symbols; }
       void setSymbols(const std::vector<SymId>& s) { _symbols = s; }
@@ -86,7 +85,7 @@ class Trill : public SLine {
       virtual LineSegment* createLineSegment() override;
       virtual void add(Element*) override;
       virtual void remove(Element*) override;
-      virtual void write(Xml&) const override;
+      virtual void write(XmlWriter&) const override;
       virtual void read(XmlReader&) override;
 
       void setTrillType(const QString& s);

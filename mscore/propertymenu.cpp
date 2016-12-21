@@ -22,7 +22,6 @@
 
 #include "articulationprop.h"
 #include "bendproperties.h"
-#include "voltaproperties.h"
 #include "lineproperties.h"
 #include "tremolobarprop.h"
 #include "timesigproperties.h"
@@ -30,7 +29,6 @@
 #include "textproperties.h"
 #include "sectionbreakprop.h"
 #include "stafftextproperties.h"
-#include "glissandoproperties.h"
 #include "fretproperties.h"
 #include "selinstrument.h"
 #include "pianoroll.h"
@@ -174,7 +172,6 @@ void ScoreView::createElementPropertyMenu(Element* e, QMenu* popup)
       else if (e->type() == Element::Type::VOLTA_SEGMENT) {
             genPropertyMenu1(e, popup);
             popup->addAction(tr("Line Properties..."))->setData("l-props");
-            popup->addAction(tr("Volta Properties..."))->setData("v-props");
             }
       else if (e->type() == Element::Type::TIMESIG) {
             genPropertyMenu1(e, popup);
@@ -210,10 +207,10 @@ void ScoreView::createElementPropertyMenu(Element* e, QMenu* popup)
             popup->addAction(tr("Text Properties..."))->setData("text-props");
             }
       else if (e->type() == Element::Type::TEXTLINE_SEGMENT
-                  || e->type() == Element::Type::OTTAVA_SEGMENT
-                  || e->type() == Element::Type::PEDAL_SEGMENT
-                  || (e->type() == Element::Type::HAIRPIN_SEGMENT
-                      && static_cast<HairpinSegment*>(e)->hairpin()->useTextLine())) {
+         || e->type() == Element::Type::OTTAVA_SEGMENT
+         || e->type() == Element::Type::PEDAL_SEGMENT
+         || e->type() == Element::Type::HAIRPIN_SEGMENT
+         ) {
             popup->addAction(tr("Line Properties..."))->setData("l-props");
             }
       else if (e->type() == Element::Type::STAFF_TEXT) {
@@ -316,10 +313,6 @@ void ScoreView::createElementPropertyMenu(Element* e, QMenu* popup)
       else if (e->type() == Element::Type::FRET_DIAGRAM) {
             popup->addAction(tr("Fretboard Diagram Properties..."))->setData("fret-props");
             }
-      else if (e->type() == Element::Type::GLISSANDO) {
-            genPropertyMenu1(e, popup);
-            popup->addAction(tr("Glissando Properties..."))->setData("gliss-props");
-            }
       else if (e->type() == Element::Type::INSTRUMENT_NAME) {
             popup->addAction(tr("Text Style..."))->setData("text-style");
             popup->addAction(tr("Staff Properties..."))->setData("staff-props");
@@ -411,24 +404,9 @@ void ScoreView::elementPropertyAction(const QString& cmd, Element* e)
             score()->select(s, SelectType::SINGLE, 0);
             startEdit(s);
             }
-      else if (cmd == "v-props") {
-            VoltaSegment* vs = static_cast<VoltaSegment*>(e);
-            VoltaProperties vp;
-            vp.setText(Text::unEscape(vs->volta()->text()));
-            vp.setEndings(vs->volta()->endings());
-            int rv = vp.exec();
-            if (rv) {
-                  QString txt  = vp.getText();
-                  QList<int> l = vp.getEndings();
-                  if (txt != vs->volta()->text())
-                        vs->volta()->undoChangeProperty(P_ID::BEGIN_TEXT, Text::tagEscape(txt));
-                  if (l != vs->volta()->endings())
-                        vs->volta()->undoChangeProperty(P_ID::VOLTA_ENDING, QVariant::fromValue(l));
-                  }
-            }
       else if (cmd == "l-props") {
-            TextLineSegment* vs = static_cast<TextLineSegment*>(e);
-            LineProperties lp(vs->textLine());
+            TextLineBaseSegment* vs = static_cast<TextLineBaseSegment*>(e);
+             LineProperties lp(vs->textLineBase());
             lp.exec();
             }
       else if (cmd == "tr-props")
@@ -541,6 +519,8 @@ void ScoreView::elementPropertyAction(const QString& cmd, Element* e)
                         nlb->setPause(sbp.pause());
                         nlb->setStartWithLongNames(sbp.startWithLongNames());
                         nlb->setStartWithMeasureOne(sbp.startWithMeasureOne());
+                        // propagate in parts
+                        score()->undoChangeProperty(lb, P_ID::PAUSE, sbp.pause());
                         score()->undoChangeElement(lb, nlb);
                         }
                   }
@@ -562,10 +542,6 @@ void ScoreView::elementPropertyAction(const QString& cmd, Element* e)
            }
       else if (cmd == "fret-props")
             editFretDiagram(static_cast<FretDiagram*>(e));
-      else if (cmd == "gliss-props") {
-            GlissandoProperties vp(static_cast<Glissando*>(e));
-            vp.exec();
-            }
       else if (cmd == "staff-props") {
             int tick = -1;
             if (e->isChordRest())

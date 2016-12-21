@@ -34,8 +34,27 @@ ExampleView::ExampleView(QWidget* parent)
       double mag = 0.9 * guiScaling * (DPI_DISPLAY / DPI);  // 90% of nominal
       qreal _spatium = SPATIUM20 * mag;
       // example would normally be 10sp from top of page; this leaves 3sp margin above
-      _matrix  = QTransform(mag, 0.0, 0.0, mag, _spatium, -_spatium * 7.0);
+//      _matrix  = QTransform(mag, 0.0, 0.0, mag, _spatium, -_spatium * 7.0);
+      _matrix  = QTransform(mag, 0.0, 0.0, mag, _spatium, -_spatium * 9.0);
       imatrix  = _matrix.inverted();
+      _fgPixmap = nullptr;
+      if (preferences.fgUseColor)
+            _fgColor = preferences.fgColor;
+      else {
+            _fgPixmap = new QPixmap(preferences.fgWallpaper);
+            if (_fgPixmap == 0 || _fgPixmap->isNull())
+                  qDebug("no valid pixmap %s", qPrintable(preferences.fgWallpaper));
+            }
+      }
+
+//---------------------------------------------------------
+//   ~ExampleView
+//---------------------------------------------------------
+
+ExampleView::~ExampleView()
+      {
+      if (_fgPixmap)
+            delete _fgPixmap;
       }
 
 void ExampleView::layoutChanged()
@@ -118,8 +137,14 @@ Element* ExampleView::elementNear(QPointF)
       return 0;
       }
 
-void ExampleView::drawBackground(QPainter*, const QRectF&) const
+void ExampleView::drawBackground(QPainter* p, const QRectF& r) const
       {
+      if (_fgPixmap == 0 || _fgPixmap->isNull())
+            p->fillRect(r, _fgColor);
+      else {
+            p->drawTiledPixmap(r, *_fgPixmap, r.topLeft()
+               - QPoint(lrint(_matrix.dx()), lrint(_matrix.dy())));
+            }
       }
 
 //---------------------------------------------------------
@@ -128,7 +153,7 @@ void ExampleView::drawBackground(QPainter*, const QRectF&) const
 
 void ExampleView::drawElements(QPainter& painter, const QList<Element*>& el)
       {
-      foreach (Element* e, el) {
+      for (Element* e : el) {
             e->itemDiscovered = 0;
             QPointF pos(e->pagePos());
             painter.translate(pos);
@@ -147,7 +172,9 @@ void ExampleView::paintEvent(QPaintEvent* ev)
             QPainter p(this);
             p.setRenderHint(QPainter::Antialiasing, preferences.antialiasedDrawing);
             p.setRenderHint(QPainter::TextAntialiasing, true);
-            QRect r(ev->rect());
+            const QRect r(ev->rect());
+
+            drawBackground(&p, r);
 
             p.setTransform(_matrix);
             QRectF fr = imatrix.mapRect(QRectF(r));
@@ -175,7 +202,7 @@ void ExampleView::dragEnterEvent(QDragEnterEvent* event)
 
 // qDebug("ExampleView::dragEnterEvent Symbol: <%s>", a.data());
 
-            XmlReader e(a);
+            XmlReader e(score(), a);
             QPointF dragOffset;
             Fraction duration;  // dummy
             Element::Type type = Element::readType(e, &dragOffset, &duration);
@@ -340,7 +367,10 @@ QSize ExampleView::sizeHint() const
       qreal mag = 0.9 * guiScaling * (DPI_DISPLAY / DPI);
       qreal _spatium = SPATIUM20 * mag;
       // staff is 4sp tall with 3sp margin above; this leaves 3sp margin below
-      return QSize(1000 * mag, _spatium * 10.0);
+      qreal height = 10.0 * _spatium;
+      if (score() && score()->pages().size() > 0)
+            height = score()->pages()[0]->tbbox().height() * mag + (6 * _spatium);
+      return QSize(1000 * mag, height);
       }
 
 

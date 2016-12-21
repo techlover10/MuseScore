@@ -18,8 +18,7 @@
 #include "fraction.h"
 #include "scoreElement.h"
 #include "shape.h"
-
-class QPainter;
+#include "property.h"
 
 namespace Ms {
 
@@ -28,8 +27,7 @@ namespace Ms {
  Definition of classes Element, ElementList, StaffLines.
 */
 
-
-class Xml;
+class XmlWriter;
 class Measure;
 class Staff;
 class Part;
@@ -56,6 +54,7 @@ class ChordRest;
 class Slur;
 class Tie;
 class Glissando;
+class GlissandoSegment;
 class SystemDivider;
 class RehearsalMark;
 class Harmony;
@@ -70,8 +69,11 @@ class LayoutBreak;
 class Tremolo;
 class System;
 class Lyrics;
+class LyricsLine;
+class LyricsLineSegment;
 class Stem;
 class SlurSegment;
+class TieSegment;
 class OttavaSegment;
 class Beam;
 class Hook;
@@ -85,6 +87,7 @@ class Text;
 class Hairpin;
 class HairpinSegment;
 class Bend;
+class TremoloBar;
 class RepeatMeasure;
 class Tuplet;
 class NoteDot;
@@ -93,7 +96,27 @@ class InstrumentName;
 class DurationElement;
 class Accidental;
 class TextLine;
+class TextLineSegment;
 class Pedal;
+class PedalSegment;
+class LedgerLine;
+class Icon;
+class VoltaSegment;
+class NoteLine;
+class Trill;
+class TrillSegment;
+class Symbol;
+class FSymbol;
+class Fingering;
+class NoteHead;
+class FiguredBass;
+class StaffState;
+class Arpeggio;
+class Image;
+class ChordLine;
+class SlurTieSegment;
+class FretDiagram;
+class StaffTypeChange;
 
 enum class SymId;
 
@@ -101,7 +124,7 @@ enum class SymId;
 //   Grip
 //---------------------------------------------------------
 
-enum class Grip : signed char {
+enum class Grip : int {
       NO_GRIP = -1,
       START = 0, END = 1,                         // arpeggio etc.
           MIDDLE = 2, APERTURE = 3,               // Line
@@ -114,13 +137,34 @@ enum class Grip : signed char {
 //   ElementFlag
 //---------------------------------------------------------
 
-enum class ElementFlag : char {
-      DROP_TARGET  = 0x2,
-      SELECTABLE   = 0x4,
-      MOVABLE      = 0x8,
-      SEGMENT      = 0x10,
-      HAS_TAG      = 0x20,
-      ON_STAFF     = 0x40   // parent is Segment() type
+enum class ElementFlag {
+      DROP_TARGET     = 0x00000001,
+      SELECTABLE      = 0x00000002,
+      MOVABLE         = 0x00000004,
+      SEGMENT         = 0x00000008,
+      HAS_TAG         = 0x00000010,
+      ON_STAFF        = 0x00000020,   // parent is Segment() type
+      SELECTED        = 0x00000040,
+      GENERATED       = 0x00000080,
+      VISIBLE         = 0x00000100,
+      AUTOPLACE       = 0x00000200,
+
+      // measure flags
+      REPEAT_END      = 0x00000400,
+      REPEAT_START    = 0x00000800,
+      REPEAT_JUMP     = 0x00001000,
+      IRREGULAR       = 0x00002000,
+      LINE_BREAK      = 0x00004000,
+      PAGE_BREAK      = 0x00008000,
+      SECTION_BREAK   = 0x00010000,
+      NO_BREAK        = 0x00020000,
+      HEADER          = 0x00040000,
+      TRAILER         = 0x00080000,    // also used in segment
+      KEYSIG          = 0x00100000,
+      // segment flags
+      ENABLED         = 0x00200000,    // used for segments
+      EMPTY           = 0x00400000,
+      WRITTEN         = 0x00800000,
       };
 
 typedef QFlags<ElementFlag> ElementFlags;
@@ -209,12 +253,13 @@ class Element : public QObject, public ScoreElement {
       Q_PROPERTY(bool                     visible     READ visible      WRITE undoSetVisible)
 
       Element* _parent { 0 };
-
-      bool _generated;            ///< automatically generated Element
+      mutable ElementFlags _flags  {
+            ElementFlag::ENABLED | ElementFlag::EMPTY | ElementFlag::AUTOPLACE | ElementFlag::SELECTABLE
+            | ElementFlag::VISIBLE
+            };    // used for segments
 
   protected:
-      bool _selected;             ///< set if element is selected
-      bool _visible;              ///< visibility attribute
+      mutable int _z;
       QColor _color;              ///< element color attribute
 
   public:
@@ -229,6 +274,7 @@ class Element : public QObject, public ScoreElement {
             TEXT,
             INSTRUMENT_NAME,
             SLUR_SEGMENT,
+            TIE_SEGMENT,
             STAFF_LINES,
             BAR_LINE,
             SYSTEM_DIVIDER,
@@ -237,6 +283,7 @@ class Element : public QObject, public ScoreElement {
 
             ARPEGGIO,
             ACCIDENTAL,
+            LEDGER_LINE,
             STEM,             // list STEM before NOTE: notes in TAB might 'break' stems
             NOTE,             // and this requires stems to be drawn before notes
             CLEF,             // elements from CLEF to TIMESIG need to be in the order
@@ -247,7 +294,6 @@ class Element : public QObject, public ScoreElement {
             BREATH,
 
             REPEAT_MEASURE,
-            IMAGE,
             TIE,
             ARTICULATION,
             CHORDLINE,
@@ -265,8 +311,10 @@ class Element : public QObject, public ScoreElement {
             STAFF_TEXT,
             REHEARSAL_MARK,
             INSTRUMENT_CHANGE,
+            STAFFTYPE_CHANGE,
             HARMONY,
             FRET_DIAGRAM,
+
             BEND,
             TREMOLOBAR,
             VOLTA,
@@ -278,13 +326,14 @@ class Element : public QObject, public ScoreElement {
             PEDAL_SEGMENT,
             LYRICSLINE_SEGMENT,
             GLISSANDO_SEGMENT,
+
             LAYOUT_BREAK,
             SPACER,
             STAFF_STATE,
-            LEDGER_LINE,
             NOTEHEAD,
             NOTEDOT,
             TREMOLO,
+            IMAGE,
             MEASURE,
             SELECTION,
             LASSO,
@@ -297,6 +346,7 @@ class Element : public QObject, public ScoreElement {
             PEDAL,
             TRILL,
             TEXTLINE,
+            TEXTLINE_BASE,
             NOTELINE,
             LYRICSLINE,
             GLISSANDO,
@@ -328,18 +378,11 @@ class Element : public QObject, public ScoreElement {
 
   private:
       Placement _placement;
-
-      mutable ElementFlags _flags;
-      bool _autoplace;
-
       int _track;                 ///< staffIdx * VOICES + voice
       qreal _mag;                 ///< standard magnification (derived value)
-
       QPointF _pos;               ///< Reference position, relative to _parent.
       QPointF _userOff;           ///< offset from normal layout position:
-                                  ///< user dragged object this amount.
       QPointF _readPos;
-
       mutable QRectF _bbox;       ///< Bounding box relative to _pos + _userOff
                                   ///< valid after call to layout()
       uint _tag;                  ///< tag bitmask
@@ -363,18 +406,27 @@ class Element : public QObject, public ScoreElement {
 
       qreal spatium() const;
 
-      bool selected() const                   { return _selected;   }
-      virtual void setSelected(bool f)        { _selected = f;      }
+      inline void setFlag(ElementFlag f, bool v)       { if (v) _flags |= f; else _flags &= ~ElementFlags(f); }
+      inline void setFlag(ElementFlag f, bool v) const { if (v) _flags |= f; else _flags &= ~ElementFlags(f); }
+      inline bool flag(ElementFlag f) const            { return _flags & f; }
+      inline void setFlags(ElementFlags f)             { _flags |= f;       }
+      inline void clearFlags(ElementFlags f)           { _flags &= ~f;      }
+      inline ElementFlags flags() const                { return _flags;     }
 
-      bool visible() const                    { return _visible;    }
-      virtual void setVisible(bool f)         { _visible = f;       }
+      bool selected() const                   { return flag(ElementFlag::SELECTED); }
+      virtual void setSelected(bool f)        { setFlag(ElementFlag::SELECTED, f);  }
+
+      bool visible() const                    { return flag(ElementFlag::VISIBLE);  }
+      virtual void setVisible(bool f)         { setFlag(ElementFlag::VISIBLE, f);   }
 
       Placement placement() const             { return _placement;  }
       void setPlacement(Placement val)        { _placement = val;   }
       void undoSetPlacement(Placement val);
+      bool placeBelow() const                 { return _placement == Placement::BELOW; }
+      bool placeAbove() const                 { return _placement == Placement::ABOVE; }
 
-      bool generated() const                  { return _generated;  }
-      void setGenerated(bool val)             { _generated = val;   }
+      bool generated() const                  { return flag(ElementFlag::GENERATED);  }
+      void setGenerated(bool val)             { setFlag(ElementFlag::GENERATED, val);   }
 
       const QPointF& ipos() const             { return _pos;                    }
       virtual const QPointF pos() const       { return _pos + _userOff;         }
@@ -408,17 +460,17 @@ class Element : public QObject, public ScoreElement {
       QPointF scriptUserOff() const;
       void scriptSetUserOff(const QPointF& o);
 
-      bool isNudged() const                   { return !(_readPos.isNull() && _userOff.isNull()); }
-      const QPointF& readPos() const          { return _readPos;   }
-      void setReadPos(const QPointF& p)       { _readPos = p;      }
+      bool isNudged() const                       { return !(_readPos.isNull() && _userOff.isNull()); }
+      const QPointF& readPos() const              { return _readPos;   }
+      void setReadPos(const QPointF& p)           { _readPos = p;      }
       virtual void adjustReadPos();
 
-      virtual const QRectF& bbox() const      { return _bbox;              }
-      virtual QRectF& bbox()                  { return _bbox;              }
-      virtual qreal height() const            { return bbox().height();    }
-      virtual void setHeight(qreal v)         { _bbox.setHeight(v);        }
-      virtual qreal width() const             { return bbox().width();     }
-      virtual void setWidth(qreal v)          { _bbox.setWidth(v);         }
+      virtual const QRectF& bbox() const          { return _bbox;              }
+      virtual QRectF& bbox()                      { return _bbox;              }
+      virtual qreal height() const                { return bbox().height();    }
+      virtual void setHeight(qreal v)             { _bbox.setHeight(v);        }
+      virtual qreal width() const                 { return bbox().width();     }
+      virtual void setWidth(qreal v)              { _bbox.setWidth(v);         }
       QRectF abbox() const                        { return bbox().translated(pagePos());   }
       QRectF pageBoundingRect() const             { return bbox().translated(pagePos());   }
       QRectF canvasBoundingRect() const           { return bbox().translated(canvasPos()); }
@@ -436,17 +488,17 @@ class Element : public QObject, public ScoreElement {
       virtual void draw(QPainter*) const {}
       void drawAt(QPainter*p, const QPointF& pt) const { p->translate(pt); draw(p); p->translate(-pt);}
 
-      virtual void writeProperties(Xml& xml) const;
+      virtual void writeProperties(XmlWriter& xml) const;
       virtual bool readProperties(XmlReader&);
 
-      virtual void write(Xml&) const;
+      virtual void write(XmlWriter&) const;
       virtual void read(XmlReader&);
 
       virtual QRectF drag(EditData*);
       virtual void endDrag()                  {}
       virtual QLineF dragAnchor() const       { return QLineF(); }
 
-      virtual bool isEditable() const         { return !_generated; }
+      virtual bool isEditable() const         { return !flag(ElementFlag::GENERATED); }
       virtual void startEdit(MuseScoreView*, const QPointF&);
       virtual bool edit(MuseScoreView*, Grip, int key, Qt::KeyboardModifiers, const QString& s);
       virtual void editDrag(const EditData&);
@@ -463,7 +515,8 @@ class Element : public QObject, public ScoreElement {
       int track() const                       { return _track; }
       virtual void setTrack(int val)          { _track = val;  }
 
-      virtual int z() const                   { return int(type()) * 100; }  // stacking order
+      int z() const;
+      void setZ(int val)                      { _z = val;  }
 
       int staffIdx() const                    { return _track >> 2;        }
       virtual int vStaffIdx() const           { return staffIdx();         }
@@ -560,37 +613,38 @@ class Element : public QObject, public ScoreElement {
       static Element::Type name2type(const QStringRef&);
       static Element* name2Element(const QStringRef&, Score*);
 
-      void setFlag(ElementFlag f, bool v)  {
-            if (v)
-                  _flags |= f;
-            else
-                  _flags &= ~ElementFlags(f);
-            }
-      bool flag(ElementFlag f) const   { return _flags & f; }
-      void setFlags(ElementFlags f)    { _flags = f;    }
-      ElementFlags flags() const       { return _flags; }
       virtual bool systemFlag() const  { return false;  }
+
+      bool header() const              { return flag(ElementFlag::HEADER);        }
+      void setHeader(bool v)           { setFlag(ElementFlag::HEADER, v);         }
+
+      bool trailer() const             { return flag(ElementFlag::TRAILER); }
+      void setTrailer(bool val)        { setFlag(ElementFlag::TRAILER, val); }
+
       bool selectable() const          { return flag(ElementFlag::SELECTABLE);  }
       void setSelectable(bool val)     { setFlag(ElementFlag::SELECTABLE, val); }
+
       bool dropTarget() const          { return flag(ElementFlag::DROP_TARGET); }
-      void setDropTarget(bool v) const {
-            if (v)
-                  _flags |= ElementFlag::DROP_TARGET;
-            else
-                  _flags &= ~ElementFlags(ElementFlag::DROP_TARGET);
-            }
+      void setDropTarget(bool v) const { setFlag(ElementFlag::DROP_TARGET, v);  }
+
       virtual bool isMovable() const   { return flag(ElementFlag::MOVABLE);     }
-      bool isSegmentFlag() const           { return flag(ElementFlag::SEGMENT);     }
+      bool isSegmentFlag() const       { return flag(ElementFlag::SEGMENT);     }
+
+      bool enabled() const             { return flag(ElementFlag::ENABLED); }
+      void setEnabled(bool val)        { setFlag(ElementFlag::ENABLED, val); }
+
       uint tag() const                 { return _tag;                      }
       void setTag(uint val)            { _tag = val;                       }
-      bool autoplace() const           { return _autoplace; }
-      void setAutoplace(bool v)        { _autoplace = v; }
+
+      bool autoplace() const           { return flag(ElementFlag::AUTOPLACE); }
+      void setAutoplace(bool v)        { setFlag(ElementFlag::AUTOPLACE, v); }
 
       virtual QVariant getProperty(P_ID) const override;
       virtual bool setProperty(P_ID, const QVariant&) override;
       virtual QVariant propertyDefault(P_ID) const override;
+      virtual void resetProperty(P_ID);
+
       void undoChangeProperty(P_ID, const QVariant&, PropertyStyle ps = PropertyStyle::NOSTYLE);
-      void resetProperty(P_ID);
       void undoResetProperty(P_ID);
       bool custom(P_ID) const;
       void readProperty(XmlReader&, P_ID);
@@ -642,11 +696,10 @@ class Element : public QObject, public ScoreElement {
       // DEBUG: check to catch old (now renamed) ambitious Segment->isChordRest() calls
       //    (which check the subtype)
 
-      bool isChordRest() const { Q_ASSERT(type() != Element::Type::SEGMENT); return type() == Element::Type::REST || type() == Element::Type::CHORD
-            || type() == Element::Type::REPEAT_MEASURE; }
-      bool isChordRest1() const { return type() == Element::Type::REST || type() == Element::Type::CHORD
+      bool isChordRest() const { return type() == Element::Type::REST || type() == Element::Type::CHORD
             || type() == Element::Type::REPEAT_MEASURE; }
       bool isDurationElement() const { return isChordRest() || (type() == Element::Type::TUPLET); }
+      bool isSlurTieSegment() const { return type() == Element::Type::SLUR_SEGMENT || type() == Element::Type::TIE_SEGMENT; }
       bool isSLine() const;
       bool isSLineSegment() const;
 
@@ -672,6 +725,7 @@ class Element : public QObject, public ScoreElement {
       CONVERT(Tie,           TIE)
       CONVERT(Slur,          SLUR)
       CONVERT(Glissando,     GLISSANDO)
+      CONVERT(GlissandoSegment,     GLISSANDO_SEGMENT)
       CONVERT(SystemDivider, SYSTEM_DIVIDER)
       CONVERT(RehearsalMark, REHEARSAL_MARK)
       CONVERT(Harmony,       HARMONY)
@@ -689,14 +743,17 @@ class Element : public QObject, public ScoreElement {
       CONVERT(Hook,          HOOK)
       CONVERT(StemSlash,     STEM_SLASH)
       CONVERT(SlurSegment,   SLUR_SEGMENT)
+      CONVERT(TieSegment,    TIE_SEGMENT)
       CONVERT(Spacer,        SPACER)
       CONVERT(StaffLines,    STAFF_LINES)
       CONVERT(Ambitus,       AMBITUS)
       CONVERT(Bracket,       BRACKET)
       CONVERT(InstrumentChange, INSTRUMENT_CHANGE)
+      CONVERT(StaffTypeChange, STAFFTYPE_CHANGE)
       CONVERT(Hairpin,       HAIRPIN)
       CONVERT(HairpinSegment,HAIRPIN_SEGMENT)
       CONVERT(Bend,          BEND)
+      CONVERT(TremoloBar,    TREMOLOBAR)
       CONVERT(RepeatMeasure, REPEAT_MEASURE)
       CONVERT(Tuplet,        TUPLET)
       CONVERT(NoteDot,       NOTEDOT)
@@ -704,8 +761,28 @@ class Element : public QObject, public ScoreElement {
       CONVERT(InstrumentName, INSTRUMENT_NAME)
       CONVERT(Accidental,    ACCIDENTAL)
       CONVERT(TextLine,      TEXTLINE)
+      CONVERT(TextLineSegment,      TEXTLINE_SEGMENT)
       CONVERT(Pedal,         PEDAL)
+      CONVERT(PedalSegment,  PEDAL_SEGMENT)
       CONVERT(OttavaSegment, OTTAVA_SEGMENT)
+      CONVERT(LedgerLine,    LEDGER_LINE)
+      CONVERT(Icon,          ICON)
+      CONVERT(VoltaSegment,  VOLTA_SEGMENT)
+      CONVERT(NoteLine,      NOTELINE)
+      CONVERT(Trill,         TRILL)
+      CONVERT(TrillSegment,  TRILL_SEGMENT)
+      CONVERT(Symbol,        SYMBOL)
+      CONVERT(FSymbol,       FSYMBOL)
+      CONVERT(Fingering,     FINGERING)
+      CONVERT(NoteHead,      NOTEHEAD)
+      CONVERT(LyricsLine,    LYRICSLINE)
+      CONVERT(LyricsLineSegment, LYRICSLINE_SEGMENT)
+      CONVERT(FiguredBass,   FIGURED_BASS)
+      CONVERT(StaffState,    STAFF_STATE)
+      CONVERT(Arpeggio,      ARPEGGIO)
+      CONVERT(Image,         IMAGE)
+      CONVERT(ChordLine,     CHORDLINE)
+      CONVERT(FretDiagram,   FRET_DIAGRAM)
 #undef CONVERT
       };
 
@@ -727,10 +804,24 @@ static inline const ChordRest* toChordRest(const Element* e) {
          || e->type() == Element::Type::REPEAT_MEASURE);
       return (const ChordRest*)e;
       }
+static inline DurationElement* toDurationElement(Element* e) {
+      Q_ASSERT(e == 0 || e->type() == Element::Type::CHORD || e->type() == Element::Type::REST
+         || e->type() == Element::Type::REPEAT_MEASURE || e->type() == Element::Type::TUPLET);
+      return (DurationElement*)e;
+      }
 static inline const DurationElement* toDurationElement(const Element* e) {
       Q_ASSERT(e == 0 || e->type() == Element::Type::CHORD || e->type() == Element::Type::REST
          || e->type() == Element::Type::REPEAT_MEASURE || e->type() == Element::Type::TUPLET);
       return (const DurationElement*)e;
+      }
+
+static inline SlurTieSegment* toSlurTieSegment(Element* e) {
+      Q_ASSERT(e == 0 || e->type() == Element::Type::SLUR_SEGMENT || e->type() == Element::Type::TIE_SEGMENT);
+      return (SlurTieSegment*)e;
+      }
+static inline const SlurTieSegment* toSlurTieSegment(const Element* e) {
+      Q_ASSERT(e == 0 || e->type() == Element::Type::SLUR_SEGMENT || e->type() == Element::Type::TIE_SEGMENT);
+      return (const SlurTieSegment*)e;
       }
 
 #define CONVERT(a,b) \
@@ -756,6 +847,7 @@ static inline const a* to##a(const Element* e) { Q_ASSERT(e == 0 || e->type() ==
       CONVERT(Tie,           TIE)
       CONVERT(Slur,          SLUR)
       CONVERT(Glissando,     GLISSANDO)
+      CONVERT(GlissandoSegment,     GLISSANDO_SEGMENT)
       CONVERT(SystemDivider, SYSTEM_DIVIDER)
       CONVERT(RehearsalMark, REHEARSAL_MARK)
       CONVERT(Harmony,       HARMONY)
@@ -773,24 +865,47 @@ static inline const a* to##a(const Element* e) { Q_ASSERT(e == 0 || e->type() ==
       CONVERT(Hook,          HOOK)
       CONVERT(StemSlash,     STEM_SLASH)
       CONVERT(SlurSegment,   SLUR_SEGMENT)
+      CONVERT(TieSegment,    TIE_SEGMENT)
       CONVERT(Spacer,        SPACER)
       CONVERT(StaffLines,    STAFF_LINES)
       CONVERT(Ambitus,       AMBITUS)
       CONVERT(Bracket,       BRACKET)
       CONVERT(InstrumentChange, INSTRUMENT_CHANGE)
+      CONVERT(StaffTypeChange, STAFFTYPE_CHANGE)
       CONVERT(Text,          TEXT)
       CONVERT(Hairpin,       HAIRPIN)
       CONVERT(HairpinSegment,HAIRPIN_SEGMENT)
       CONVERT(Bend,          BEND)
+      CONVERT(TremoloBar,    TREMOLOBAR)
       CONVERT(RepeatMeasure, REPEAT_MEASURE)
       CONVERT(Tuplet,        TUPLET)
       CONVERT(NoteDot,       NOTEDOT)
       CONVERT(Dynamic,       DYNAMIC)
       CONVERT(InstrumentName, INSTRUMENT_NAME)
       CONVERT(Accidental,    ACCIDENTAL)
-      CONVERT(TextLine,     TEXTLINE)
+      CONVERT(TextLine,      TEXTLINE)
+      CONVERT(TextLineSegment,      TEXTLINE_SEGMENT)
       CONVERT(Pedal,         PEDAL)
+      CONVERT(PedalSegment,  PEDAL_SEGMENT)
       CONVERT(OttavaSegment, OTTAVA_SEGMENT)
+      CONVERT(LedgerLine,    LEDGER_LINE)
+      CONVERT(Icon,          ICON)
+      CONVERT(VoltaSegment,  VOLTA_SEGMENT)
+      CONVERT(NoteLine,      NOTELINE)
+      CONVERT(Trill,         TRILL)
+      CONVERT(TrillSegment,  TRILL_SEGMENT)
+      CONVERT(Symbol,        SYMBOL)
+      CONVERT(FSymbol,       FSYMBOL)
+      CONVERT(Fingering,     FINGERING)
+      CONVERT(NoteHead,      NOTEHEAD)
+      CONVERT(LyricsLine,    LYRICSLINE)
+      CONVERT(LyricsLineSegment, LYRICSLINE_SEGMENT)
+      CONVERT(FiguredBass,   FIGURED_BASS)
+      CONVERT(StaffState,    STAFF_STATE)
+      CONVERT(Arpeggio,      ARPEGGIO)
+      CONVERT(Image,         IMAGE)
+      CONVERT(ChordLine,     CHORDLINE)
+      CONVERT(FretDiagram,   FRET_DIAGRAM)
 #undef CONVERT
 
 //---------------------------------------------------------
@@ -802,8 +917,8 @@ class ElementList : public std::vector<Element*> {
       ElementList() {}
       bool remove(Element*);
       void replace(Element* old, Element* n);
-      void write(Xml&) const;
-      void write(Xml&, const char* name) const;
+      void write(XmlWriter&) const;
+      void write(XmlWriter&, const char* name) const;
       };
 
 //-------------------------------------------------------------------
@@ -817,7 +932,7 @@ class StaffLines : public Element {
 
       qreal dist;
       qreal lw;
-      int lines;
+      int _lines;
 
    public:
       StaffLines(Score*);
@@ -830,7 +945,8 @@ class StaffLines : public Element {
       virtual QPointF pagePos() const;    ///< position in page coordinates
       virtual QPointF canvasPos() const;  ///< position in page coordinates
       qreal y1() const;
-      qreal staffHeight() const { return (lines-1) * dist; }
+      qreal staffHeight() const { return (_lines-1) * dist; }
+      int lines() const { return _lines; }
       };
 
 //---------------------------------------------------------
@@ -840,11 +956,8 @@ class StaffLines : public Element {
 class Line : public Element {
       Q_OBJECT
 
-      Spatium _width;
-      Spatium _len;
-      int _z;                     ///< stacking order when drawing or selecting;
-                                  ///< elements are drawn from high number to low number;
-                                  ///< default is type() * 100;
+      qreal _width;
+      qreal _len;
 
    protected:
       bool vertical;
@@ -854,21 +967,20 @@ public:
       Line(Score*, bool vertical);
       Line &operator=(const Line&);
 
-      virtual Line* clone() const        { return new Line(*this); }
-      virtual Element::Type type() const { return Element::Type::LINE; }
-      virtual void layout();
+      virtual Line* clone() const override        { return new Line(*this); }
+      virtual Element::Type type() const override { return Element::Type::LINE; }
+      virtual void layout() override;
 
-      virtual void draw(QPainter*) const;
-      void writeProperties(Xml& xml) const;
+      virtual void draw(QPainter*) const override;
+      void writeProperties(XmlWriter& xml) const;
       bool readProperties(XmlReader&);
-      void dump() const;
 
-      Spatium len()    const { return _len; }
-      Spatium lineWidth()  const { return _width; }
-      void setLen(Spatium);
-      void setLineWidth(Spatium);
-      virtual int z() const               { return _z; }
-      void setZ(int val)                  { _z = val;  }
+      qreal len() const          { return _len;   }
+      qreal lineWidth() const    { return _width; }
+      void setLen(qreal v)       { _len = v;      }
+      void setLineWidth(qreal v) { _width = v;    }
+
+      virtual void spatiumChanged(qreal /*oldValue*/, qreal /*newValue*/) override;
       };
 
 //---------------------------------------------------------

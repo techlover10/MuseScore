@@ -15,8 +15,6 @@
 
 #include "symbol.h"
 
-class QPainter;
-
 namespace Ms {
 
 class Chord;
@@ -69,7 +67,7 @@ class Tremolo : public Element {
       virtual void draw(QPainter*) const;
       virtual void layout();
       void layout2();
-      virtual void write(Xml& xml) const;
+      virtual void write(XmlWriter& xml) const;
       virtual void read(XmlReader&);
 
       Chord* chord1() const { return _chord1; }

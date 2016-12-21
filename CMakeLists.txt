@@ -82,6 +82,7 @@ endif (APPLE)
 # Disable components not supported on Linux/BSD
 if (NOT APPLE AND NOT MINGW)
       set(NIX_NOT_AVAIL "Not available on Linux/BSD")
+      option(BUILD_PORTMIDI "PortMidi disabled on Linux. (It uses ALSA but it's better to use ALSA directly)" OFF)
 endif (NOT APPLE AND NOT MINGW)
 
 option(AEOLUS        "Enable pipe organ synthesizer"      OFF)
@@ -93,6 +94,7 @@ option(OCR           "Enable OCR, requires OMR" OFF)           # Requires tesser
 option(SOUNDFONT3    "Ogg Vorbis compressed fonts" ON)         # Enable Ogg Vorbis compressed fonts, requires Ogg & Vorbis
 option(HAS_AUDIOFILE "Enable audio export" ON)                 # Requires libsndfile
 option(USE_SYSTEM_QTSINGLEAPPLICATION "Use system QtSingleApplication" OFF)
+option(USE_SYSTEM_FREETYPE "Use system FreeType" OFF)          # requires freetype >= 2.5.2, does not work on win
 option(BUILD_LAME    "Enable MP3 export" ON)                   # Requires libmp3lame (non-free), call CMake with -DBUILD_LAME="OFF" to disable
 
 SET(JACK_LONGNAME "JACK (Jack Audio Connection Kit)")
@@ -101,6 +103,7 @@ option(BUILD_JACK    "Build with support for ${JACK_LONGNAME} audio backend. JAC
 option(BUILD_PULSEAUDIO "Build with support for PulseAudio audio backend." ON)
 option(BUILD_ALSA "Build with support for ALSA audio backend." ON)
 option(BUILD_PORTAUDIO "Build with support for PortAudio audio backend." ON)
+option(BUILD_PORTMIDI "Build with support for PortAudio's MIDI features." ${BUILD_PORTAUDIO}) # PortAudio required
 option(BUILD_PCH "Build using precompiled headers." OFF)
 
 if (APPLE)
@@ -154,8 +157,8 @@ else (APPLE)
       set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -mno-ms-bitfields -O2 -DNDEBUG -DQT_NO_DEBUG")
       set(CMAKE_EXE_LINKER_FLAGS "-Wl,--large-address-aware")
    else (MINGW)
-      set(CMAKE_CXX_FLAGS_DEBUG   "-std=c++11 -fPIC -g -Wall -Wextra")
-      set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fPIC -O2 -DNDEBUG -DQT_NO_DEBUG -DQT_NO_DEBUG_OUTPUT")
+      set(CMAKE_CXX_FLAGS_DEBUG   "-std=gnu++11 -fPIC -g -Wall -Wextra -Woverloaded-virtual")
+      set(CMAKE_CXX_FLAGS_RELEASE "-std=gnu++11 -fPIC -O2 -DNDEBUG -DQT_NO_DEBUG -DQT_NO_DEBUG_OUTPUT")
    endif (MINGW)
 endif(APPLE)
 
@@ -195,6 +198,25 @@ else (MINGW OR APPLE)
       SET(Mscore_INSTALL_NAME  "mscore${MSCORE_INSTALL_SUFFIX}-${MUSESCORE_VERSION}/")
       SET(Mscore_SHARE_NAME    "share/")
 endif (MINGW OR APPLE)
+
+##
+## freetype2 >= 2.5.2
+##
+
+if (USE_SYSTEM_FREETYPE)
+      if (APPLE)
+            PKGCONFIG (freetype2 2.5.2 FREETYPE_INCLUDE_DIRS FREETYPE_LIBDIR FREETYPE_LIBRARIES FREETYPE_CPP)
+            if (FREETYPE_INCLUDE_DIRS)
+                  STRING(REGEX REPLACE  "\"" "" FREETYPE_INCLUDE_DIRS ${FREETYPE_INCLUDE_DIRS})
+                  STRING(REGEX REPLACE  "\"" "" FREETYPE_LIBDIR ${FREETYPE_LIBDIR})
+                  message("freetype2 detected ${FREETYPE_INCLUDE_DIRS} ${FREETYPE_LIBDIR} ${FREETYPE_LIBRARIES}")
+            else (FREETYPE_INCLUDE_DIRS)
+                  message(FATAL_ERROR "freetype >= 2.5.2 is required\n")
+            endif (FREETYPE_INCLUDE_DIRS)
+      else (APPLE)
+            find_package(Freetype REQUIRED)
+      endif (APPLE)
+endif (USE_SYSTEM_FREETYPE)
 
 ##
 ## ALSA >= 1.0.0
@@ -312,25 +334,31 @@ ENDIF(BUILD_JACK)
 if (BUILD_PORTAUDIO)
     if (MINGW)
         set ( USE_PORTAUDIO 1 )
-        set ( USE_PORTMIDI  1 )
     else (MINGW)
         PKGCONFIG1 (portaudio-2.0 19 PORTAUDIO_INCDIR PORTAUDIO_LIBDIR PORTAUDIO_LIB PORTAUDIO_CPP)
         if (PORTAUDIO_INCDIR)
-              message(STATUS "PortAudio found. PortAudio support enabled. INCDIR ${PORTAUDIO_INCDIR}, LIBDIR ${PORTAUDIO_LIBDIR}, LIB ${PORTAUDIO_LIB}")
+              message("PortAudio found. PortAudio support enabled. INCDIR ${PORTAUDIO_INCDIR}, LIBDIR ${PORTAUDIO_LIBDIR}, LIB ${PORTAUDIO_LIB}")
               set ( USE_PORTAUDIO 1 )
         else (PORTAUDIO_INCDIR)
               message(SEND_ERROR "Error: PortAudio support requested (BUILD_PORTAUDIO=${BUILD_PORTAUDIO}), but portaudio-2.0 version 19 was not found (package portaudio19-dev)")
         endif (PORTAUDIO_INCDIR)
-        if (APPLE)
-          set (USE_PORTMIDI   1)
-        else (APPLE)
-          set (USE_PORTMIDI   0)
-        endif (APPLE)
     endif (MINGW)
 else (BUILD_PORTAUDIO)
      message(STATUS "PortAudio support disabled")
 endif (BUILD_PORTAUDIO)
 
+##
+## PortMidi
+##
+
+if (BUILD_PORTMIDI)
+    if (NOT BUILD_PORTAUDIO)
+        message(SEND_ERROR "Error: PortMidi support requested (BUILD_PORTMIDI=${BUILD_PORTMIDI}), but PortAudio support is disabled (BUILD_PORTAUDIO=${BUILD_PORTAUDIO}). PortMidi requires PortAudio.")
+    endif (NOT BUILD_PORTAUDIO)
+    set (USE_PORTMIDI 1)
+else (BUILD_PORTMIDI)
+    message(STATUS "PortMidi support disabled")
+endif (BUILD_PORTMIDI)
 
 if (APPLE)
    if(SOUNDFONT3)
@@ -543,9 +571,9 @@ add_subdirectory(fonttools EXCLUDE_FROM_ALL)
 add_subdirectory(manual)
 add_subdirectory(demos)
 
-if (USE_PORTMIDI)
+if (USE_PORTMIDI AND (MINGW OR APPLE))
       subdirs (thirdparty/portmidi)
-endif (USE_PORTMIDI)
+endif (USE_PORTMIDI AND (MINGW OR APPLE))
 
 if (AEOLUS)
       subdirs (aeolus)
@@ -563,8 +591,9 @@ if (OSC)
       subdirs (thirdparty/ofqf)
 endif (OSC)
 
-subdirs (thirdparty/freetype)
-
+if (NOT USE_SYSTEM_FREETYPE)
+      subdirs (thirdparty/freetype)
+endif (NOT USE_SYSTEM_FREETYPE)
 
 ##
 ## Includes
@@ -579,9 +608,13 @@ include_directories(
    ${VORBIS_INCDIR}
    ${SNDFILE_INCDIR}
    ${LAME_INCLUDE_DIR}
-#   ${FREETYPE_INCLUDE_DIRS}
-   ${PROJECT_SOURCE_DIR}/thirdparty/freetype/include
 )
+
+if (USE_SYSTEM_FREETYPE)
+      include_directories(${FREETYPE_INCLUDE_DIRS})
+else (USE_SYSTEM_FREETYPE)
+      include_directories(${PROJECT_SOURCE_DIR}/thirdparty/freetype/include)
+endif (USE_SYSTEM_FREETYPE)
 
 if (OMR)
    include_directories(${PROJECT_SOURCE_DIR}/thirdparty/poppler)

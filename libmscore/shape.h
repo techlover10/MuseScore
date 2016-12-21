@@ -16,7 +16,7 @@
 namespace Ms {
 
 #ifndef NDEBUG
-//#define DEBUG_SHAPES    // enable shape debugging
+// #define DEBUG_SHAPES    // enable shape debugging
 #endif
 
 class Segment;
@@ -28,6 +28,7 @@ class Segment;
 class Shape : std::vector<QRectF> {
    public:
       Shape() {}
+      Shape(const QRectF& r) { add(r); }
       void draw(QPainter*) const;
 
       void add(const Shape& s)            { insert(end(), s.begin(), s.end()); }
@@ -38,6 +39,8 @@ class Shape : std::vector<QRectF> {
       Shape translated(const QPointF&) const;
       qreal minHorizontalDistance(const Shape&) const;
       qreal minVerticalDistance(const Shape&) const;
+      qreal topDistance(const QPointF&) const;
+      qreal bottomDistance(const QPointF&) const;
       qreal left() const;
       qreal right() const;
       qreal top() const;
@@ -60,7 +63,9 @@ inline static bool intersects(qreal a, qreal b, qreal c, qreal d)
       {
       // return (a >= c && a < d) || (b >= c && b < d) || (a < c && b >= b);
       // return (std::max(a,b) > std::min(c,d)) && (std::min(a,b) < std::max(c,d));
-      // if we can assume a <= b and c <= d (reduces layout from 116
+      // if we can assume a <= b and c <= d
+      if (a == b || c == d)   // zero height
+            return false;
       return (b > c) && (a < d);
       }
 

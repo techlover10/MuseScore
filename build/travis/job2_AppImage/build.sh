@@ -18,6 +18,21 @@ branch="$TRAVIS_BRANCH"
 revision="$(echo "$TRAVIS_COMMIT" | cut -c 1-7)"
 [ "$revision" ] || revision="$(make revision && cat mscore/revision.h)"
 
+docker_tag="latest" # Docker terminology for master branch
+[ "$branch" == "master" ] || docker_tag="$branch" # other branches use branch name
+
+function rebuild-docker-image() { # $1 is arch (e.g. x86_64)
+  if [ $(git diff --name-only HEAD HEAD~1 | grep "^build/Linux+BSD/portable/$1") ]; then
+    # Need to update image on Docker Hub
+    set +x # keep env secret
+    echo "Triggering rebuild of $DOCKER_USER/musescore-$1$docker_tag on Docker Hub."
+    data="{\"source_type\": \"Branch\", \"source_name\": \"$branch\"}"
+    url="https://registry.hub.docker.com/u/$DOCKER_USER/musescore-$1/trigger/$DOCKER_TRIGGER/"
+    curl -H "Content-Type: application/json" --data "$data" -X POST "$url"
+    set -x
+  fi
+}
+
 if [ "$(grep '^[[:blank:]]*set( *MSCORE_UNSTABLE \+TRUE *)' CMakeLists.txt)" ]
 then # Build is marked UNSTABLE inside CMakeLists.txt
   if [ "${BINTRAY_REPO_OWNER}" == "musescore" ]
@@ -58,16 +73,17 @@ case "$1" in
   --i686 )
     shift
     # Build MuseScore AppImage inside 32-bit x86 Docker image
-    docker run -i -v "${PWD}:/MuseScore" toopher/centos-i386:centos6 /bin/bash -c \
-      "linux32 --32bit i386 /MuseScore/build/Linux+BSD/portable/Recipe $makefile_overrides"
+    (set +x; DOCKER_TRIGGER="$DOCKER_TRIGGER_X86_32" rebuild-docker-image x86_32)
+    docker run -i -v "${PWD}:/MuseScore" "$DOCKER_USER/musescore-x86_32:$docker_tag" /bin/bash -c \
+      "/MuseScore/build/Linux+BSD/portable/x86_32/Recipe $makefile_overrides"
     ;;
-
 
   * )
     [ "$1" == "--x86_64" ] && shift || true
     # Build MuseScore AppImage inside native (64-bit x86) Docker image
-    docker run -i -v "${PWD}:/MuseScore" library/centos:6 /bin/bash -c \
-      "/MuseScore/build/Linux+BSD/portable/Recipe $makefile_overrides"
+    (set +x; DOCKER_TRIGGER="$DOCKER_TRIGGER_X86_64" rebuild-docker-image x86_64)
+    docker run -i -v "${PWD}:/MuseScore" "$DOCKER_USER/musescore-x86_64:$docker_tag" /bin/bash -c \
+      "/MuseScore/build/Linux+BSD/portable/x86_64/Recipe $makefile_overrides"
     ;;
 esac
 

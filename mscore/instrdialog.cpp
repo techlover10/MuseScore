@@ -37,8 +37,6 @@
 
 namespace Ms {
 
-extern bool useFactorySettings;
-
 //---------------------------------------------------------
 //   InstrumentsDialog
 //---------------------------------------------------------
@@ -46,20 +44,14 @@ extern bool useFactorySettings;
 InstrumentsDialog::InstrumentsDialog(QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("Instruments");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       QAction* a = getAction("instruments");
       connect(a, SIGNAL(triggered()), SLOT(reject()));
       addAction(a);
 
-      if (!useFactorySettings) {
-            QSettings settings;
-            settings.beginGroup("Instruments");
-            resize(settings.value("size", QSize(800, 500)).toSize());
-            move(settings.value("pos", QPoint(10, 10)).toPoint());
-            settings.endGroup();
-            }
-
+      readSettings();
       }
 
 //---------------------------------------------------------
@@ -98,12 +90,12 @@ void InstrumentsDialog::on_saveButton_clicked()
             return;
             }
 
-      Xml xml(&f);
+      XmlWriter xml(0, &f);
       xml.header();
       xml.stag("museScore version=\"" MSC_VERSION "\"");
-      foreach(InstrumentGroup* g, instrumentGroups) {
+      for (InstrumentGroup* g : instrumentGroups) {
             xml.stag(QString("InstrumentGroup name=\"%1\" extended=\"%2\"").arg(g->name).arg(g->extended));
-            foreach(InstrumentTemplate* t, g->instrumentTemplates)
+            for (InstrumentTemplate* t : g->instrumentTemplates)
                   t->write(xml);
             xml.etag();
             }
@@ -144,11 +136,16 @@ void InstrumentsDialog::on_loadButton_clicked()
 
 void InstrumentsDialog::writeSettings()
       {
-      QSettings settings;
-      settings.beginGroup("Instruments");
-      settings.setValue("size", size());
-      settings.setValue("pos", pos());
-      settings.endGroup();
+      MuseScore::saveGeometry(this);
+      }
+
+//---------------------------------------------------------
+//   readSettings
+//---------------------------------------------------------
+
+void InstrumentsDialog::readSettings()
+      {
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -203,10 +200,10 @@ void MuseScore::editInstrList()
 
       // keep the keylist of the first pitched staff to apply it to new ones
       KeyList tmpKeymap;
-      Staff* firstStaff = nullptr;
+      Staff* firstStaff = 0;
       for (Staff* s : masterScore->staves()) {
             KeyList* km = s->keyList();
-            if (!s->isDrumStaff()) {
+            if (!s->isDrumStaff(0)) {     // TODO
                   tmpKeymap.insert(km->begin(), km->end());
                   firstStaff = s;
                   break;
@@ -279,7 +276,7 @@ void MuseScore::editInstrList()
 
                         Staff* linkedStaff = part->staves()->front();
                         if (sli->linked() && linkedStaff != staff) {
-                              cloneStaff(linkedStaff, staff);
+                              Excerpt::cloneStaff(linkedStaff, staff);
                               linked.append(staff);
                               }
                         }
@@ -345,7 +342,7 @@ void MuseScore::editInstrList()
                                     }
                               masterScore->undoInsertStaff(staff, rstaff, linkedStaff == 0);
                               if (linkedStaff)
-                                    cloneStaff(linkedStaff, staff);
+                                    Excerpt::cloneStaff(linkedStaff, staff);
                               else {
                                     if (firstStaff)
                                           masterScore->adjustKeySigs(staffIdx, staffIdx+1, tmpKeymap);
@@ -359,7 +356,7 @@ void MuseScore::editInstrList()
                               const StaffType* stfType = sli->staffType();
 
                               // use selected staff type
-                              if (stfType->name() != staff->staffType()->name())
+                              if (stfType->name() != staff->staffType(0)->name())
                                     masterScore->undo(new ChangeStaffType(staff, *stfType));
                               }
                         else {
@@ -481,13 +478,27 @@ void MuseScore::editInstrList()
       if (masterScore->measures()->size() == 0)
             masterScore->insertMeasure(Element::Type::MEASURE, 0, false);
 
-      QList<Score*> toDelete;
-      for (Excerpt* excpt : masterScore->excerpts()) {
-            if (excpt->partScore()->staves().size() == 0)
-                  toDelete.append(excpt->partScore());
+      for (Excerpt* excerpt : masterScore->excerpts()) {
+            QList<Staff*> sl       = excerpt->partScore()->staves();
+            QMultiMap<int, int> tr = excerpt->tracks();
+            if (sl.size() == 0)
+                  masterScore->undo(new RemoveExcerpt(excerpt));
+            else {
+                  for (Staff* s : sl) {
+                        LinkedStaves* sll = s->linkedStaves();
+                        for (Staff* ss : sll->staves())
+                              if (ss->primaryStaff()) {
+                                    for (int i = s->idx() * VOICES; i < (s->idx() + 1) * VOICES; i++) {
+                                          int strack = tr.key(i, -1);
+                                          if (strack != -1 && ((strack & ~3) == ss->idx()))
+                                                break;
+                                          else if (strack != -1)
+                                                tr.insert(ss->idx() + strack % VOICES, tr.value(strack, -1));
+                                          }
+                                    }
+                        }
+                  }
             }
-      for(Score* s: toDelete)
-            masterScore->undo(new RemoveExcerpt(s));
 
       masterScore->setLayoutAll();
       masterScore->endCmd();

@@ -24,6 +24,8 @@
 #include "ui_timesigwizard.h"
 #include "ui_newwizard.h"
 
+#include <QWizard>
+
 #include "libmscore/timesig.h"
 #include "libmscore/key.h"
 #include "libmscore/fraction.h"
@@ -83,7 +85,7 @@ class NewWizardPage1 : public QWizardPage {
       QString composer() const           { return w->composer->text();   }
       QString poet() const               { return w->poet->text();       }
       QString copyright() const          { return w->copyright->text();  }
-      virtual void initializePage();
+      virtual void initializePage() override;
       };
 
 //---------------------------------------------------------
@@ -101,9 +103,9 @@ class NewWizardPage2 : public QWizardPage {
 
    public:
       NewWizardPage2(QWidget* parent = 0);
-      virtual bool isComplete() const  { return complete; }
+      virtual bool isComplete() const override;
       void createInstruments(Score* s);
-      virtual void initializePage();
+      virtual void initializePage() override;
       };
 
 //---------------------------------------------------------
@@ -140,7 +142,7 @@ class NewWizardPage4 : public QWizardPage {
 
    public:
       NewWizardPage4(QWidget* parent = 0);
-      virtual bool isComplete() const;
+      virtual bool isComplete() const override;
       QString templatePath() const;
       virtual void initializePage();
       };
@@ -158,7 +160,7 @@ class NewWizardPage5 : public QWizardPage {
 
    public:
       NewWizardPage5(QWidget* parent = 0);
-      virtual bool isComplete() const { return true; }
+      virtual bool isComplete() const override { return true; }
       KeySigEvent keysig() const;
       double tempo() const            { return _tempo->value(); }
       bool createTempo() const        { return tempoGroup->isChecked(); }
@@ -178,12 +180,17 @@ class NewWizard : public QWizard {
       NewWizardPage4* p4;
       NewWizardPage5* p5;
 
+      virtual void hideEvent(QHideEvent*);
+
+   private slots:
+      void idChanged(int);
+
    public:
       NewWizard(QWidget* parent = 0);
       friend class QWizardPage;
       virtual int nextId() const;
 
-      enum class Page : signed char      { Invalid = -1, Type, Instruments, Template, Keysig, Timesig};
+      enum Page { Invalid = -1, Type, Instruments, Template, Keysig, Timesig};
 
       QString templatePath() const       { return p4->templatePath(); }
       int measures() const               { return p3->measures();    }

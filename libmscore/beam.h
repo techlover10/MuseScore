@@ -16,8 +16,6 @@
 #include "element.h"
 #include "durationtype.h"
 
-class QPainter;
-
 namespace Ms {
 
 class ChordRest;
@@ -59,7 +57,7 @@ class Beam : public Element {
       int minMove;              // set in layout1()
       int maxMove;
       TDuration maxDuration;
-      qreal slope;
+      qreal slope { 0.0 };
 
       int editFragment;       // valid in edit mode
 
@@ -92,7 +90,7 @@ class Beam : public Element {
       virtual void updateGrips(Grip*, QVector<QRectF>&) const override;
       virtual int grips() const override { return 2; }
 
-      virtual void write(Xml& xml) const override;
+      virtual void write(XmlWriter& xml) const override;
       virtual void read(XmlReader&) override;
       virtual void spatiumChanged(qreal /*oldValue*/, qreal /*newValue*/) override;
 
@@ -150,6 +148,8 @@ class Beam : public Element {
       virtual QVariant propertyDefault(P_ID id) const override;
       virtual PropertyStyle propertyStyle(P_ID) const override;
       virtual void resetProperty(P_ID id) override;
+      virtual StyleIdx getPropertyStyle(P_ID) const override;
+
       virtual void styleChanged() override;
       bool isGrace() const { return _isGrace; }  // for debugger
       bool cross() const   { return _cross; }

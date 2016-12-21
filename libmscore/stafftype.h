@@ -23,7 +23,7 @@ namespace Ms {
 class Chord;
 class ChordRest;
 class Staff;
-class Xml;
+class XmlWriter;
 
 // all in spatium units
 #define STAFFTYPE_TAB_DEFAULTSTEMLEN_UP   3.0
@@ -179,12 +179,16 @@ class StaffType {
       int _stepOffset       = 0;
       Spatium _lineDistance = Spatium(1);
 
-      bool _genClef         = true;       // create clef at beginning of system
       bool _showBarlines    = true;
+      bool _showLedgerLines = true;
       bool _slashStyle      = false;      // do not show stems
+
+      bool _genClef         = true;       // create clef at beginning of system
       bool _genTimesig      = true;       // whether time signature is shown or not
       bool _genKeysig       = true;       // create key signature at beginning of system
-      bool _showLedgerLines = true;
+
+      // Standard: configurable properties
+      NoteHeadScheme _noteHeadScheme = NoteHeadScheme::HEAD_NORMAL;
 
       // TAB: configurable properties
       qreal _durationFontSize = 15.0;     // the size (in points) for the duration symbol font
@@ -278,7 +282,7 @@ class StaffType {
       void setShowBarlines(bool val)           { _showBarlines = val;     }
       bool showBarlines() const                { return _showBarlines;    }
 
-      void write(Xml& xml) const;
+      void write(XmlWriter& xml) const;
       void read(XmlReader&);
 
       void setSlashStyle(bool val)             { _slashStyle = val;       }
@@ -297,6 +301,8 @@ class StaffType {
       bool genKeysig() const                   { return _genKeysig;         }
       void setShowLedgerLines(bool val)        { _showLedgerLines = val;    }
       bool showLedgerLines() const             { return _showLedgerLines;   }
+      void setNoteHeadScheme(NoteHeadScheme s) { _noteHeadScheme = s;       }
+      NoteHeadScheme noteHeadScheme()          { return _noteHeadScheme;    }
 
       QString fretString(int fret, int string, bool ghost) const;   // returns a string with the text for fret
       QString durationString(TDuration::DurationType type, int dots) const;
@@ -375,6 +381,9 @@ class StaffType {
 
       static void initStaffTypes();
       static const std::vector<StaffType>& presets() { return _presets; }
+      static QString scheme2userName(NoteHeadScheme ns);
+      static QString scheme2name(NoteHeadScheme ns);
+      static NoteHeadScheme name2scheme(QString name);
       };
 
 //---------------------------------------------------------

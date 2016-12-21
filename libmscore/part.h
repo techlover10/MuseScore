@@ -19,7 +19,7 @@
 
 namespace Ms {
 
-class Xml;
+class XmlWriter;
 class Staff;
 class Score;
 class InstrumentTemplate;
@@ -77,7 +77,8 @@ class Part : public QObject, public ScoreElement {
       virtual const char* name() const override { return "Part"; }
 
       void read(XmlReader&);
-      void write(Xml& xml) const;
+      virtual bool readProperties(XmlReader&);
+      void write(XmlWriter& xml) const;
 
       int nstaves() const                       { return _staves.size(); }
       QList<Staff*>* staves()                   { return &_staves; }

@@ -21,6 +21,7 @@
 #include "metaedit.h"
 #include "libmscore/score.h"
 #include "libmscore/undo.h"
+#include "musescore.h"
 
 namespace Ms {
 
@@ -31,19 +32,16 @@ namespace Ms {
 MetaEditDialog::MetaEditDialog(Score* s, QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("MetaEditDialog");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       score = s;
       dirty = false;
 
       level->setValue(score->mscVersion());
-      level->setDisabled(true);
       version->setText(score->mscoreVersion());
-      version->setDisabled(true);
       revision->setValue(score->mscoreRevision());
-      revision->setDisabled(true);
       filePath->setText(score->importedFilePath());
-      filePath->setDisabled(true);
 
       int idx = 0;
       QMapIterator<QString, QString> i(s->metaTags());
@@ -59,6 +57,7 @@ MetaEditDialog::MetaEditDialog(Score* s, QWidget* parent)
             ++idx;
             }
       connect(newButton, SIGNAL(clicked()), SLOT(newClicked()));
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -106,5 +105,16 @@ void MetaEditDialog::accept()
             }
       QDialog::accept();
       }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void MetaEditDialog::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
+      }
+
 }
 

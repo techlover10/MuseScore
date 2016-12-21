@@ -24,7 +24,6 @@ namespace Ms {
 BSymbol::BSymbol(Score* s)
    : Element(s)
       {
-      _z = int(Element::Type::SYMBOL) * 100;
       setFlags(ElementFlag::MOVABLE | ElementFlag::SELECTABLE);
       _systemFlag = false;
       }
@@ -32,7 +31,6 @@ BSymbol::BSymbol(Score* s)
 BSymbol::BSymbol(const BSymbol& s)
    : Element(s), ElementLayout(s)
       {
-      _z          = s._z;
       _systemFlag = s._systemFlag;
       foreach(Element* e, s._leafs) {
             Element* ee = e->clone();
@@ -45,7 +43,7 @@ BSymbol::BSymbol(const BSymbol& s)
 //   writeProperties
 //---------------------------------------------------------
 
-void BSymbol::writeProperties(Xml& xml) const
+void BSymbol::writeProperties(XmlWriter& xml) const
       {
       if (_systemFlag)
             xml.tag("systemFlag", _systemFlag);

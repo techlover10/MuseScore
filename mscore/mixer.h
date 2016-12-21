@@ -3,7 +3,7 @@
 //  Linux Music Score Editor
 //  $Id: mixer.h 4388 2011-06-18 13:17:58Z wschweer $
 //
-//  Copyright (C) 2002-2009 Werner Schweer and others
+//  Copyright (C) 2002-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -40,6 +40,9 @@ class PartEdit : public QWidget, public Ui::PartEditBase {
       Channel* channel;
       Part* part;
 
+      QList<QToolButton*> voiceButtons;
+
+
    private slots:
       void patchChanged(int, bool syncControls = true);
       void volChanged(double, bool syncControls = true);
@@ -51,6 +54,8 @@ class PartEdit : public QWidget, public Ui::PartEditBase {
       void drumsetToggled(bool, bool syncControls = true);
       void midiChannelChanged(int);
       void sync(bool syncControls);
+      void expandToggled(bool);
+      void playbackVoiceChanged();
 
    public slots:
 
@@ -78,6 +83,7 @@ class Mixer : public QScrollArea
       virtual void showEvent(QShowEvent*) override;
       virtual bool eventFilter(QObject*, QEvent*) override;
       virtual void keyPressEvent(QKeyEvent*) override;
+      void readSettings();
 
    private slots:
       void updateSolo(bool);
@@ -88,6 +94,10 @@ class Mixer : public QScrollArea
 
    signals:
       void closed(bool);
+
+   protected:
+      virtual void changeEvent(QEvent *event);
+      void retranslate(bool firstTime = false);
 
    public:
       Mixer(QWidget* parent);

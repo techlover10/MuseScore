@@ -23,7 +23,6 @@
 #include "barline.h"
 #include "slur.h"
 #include "hook.h"
-#include "lyrics.h"
 #include "bracket.h"
 #include "line.h"
 #include "staff.h"
@@ -276,7 +275,7 @@ void Page::scanElements(void* data, void (*func)(void*, Element*), bool all)
       {
       for (System* s :_systems) {
             for (MeasureBase* m : s->measures())
-                  m->scanElements(data, func, false);
+                  m->scanElements(data, func, all);
             s->scanElements(data, func, all);
             }
       func(data, this);
@@ -339,9 +338,8 @@ QString PageFormat::name() const
 //  <page-layout>
 //      <page-height>
 //      <page-width>
-//      <pageFormat>A6</pageFormat>
 //      <landscape>1</landscape>
-//      <page-margins>
+//      <page-margins type="both">
 //         <left-margin>28.3465</left-margin>
 //         <right-margin>28.3465</right-margin>
 //         <top-margin>28.3465</top-margin>
@@ -350,18 +348,15 @@ QString PageFormat::name() const
 //      </page-layout>
 //---------------------------------------------------------
 
-void PageFormat::read(XmlReader& e, Score* score)
+void PageFormat::read(XmlReader& e)
       {
       qreal _oddRightMargin  = 0.0;
       qreal _evenRightMargin = 0.0;
-      bool landscape = false;
       QString type;
 
       while (e.readNextStartElement()) {
             const QStringRef& tag(e.name());
-            if (tag == "landscape")        // obsolete
-                  landscape = e.readInt();
-            else if (tag == "page-margins") {
+            if (tag == "page-margins") {
                   type = e.attribute("type","both");
                   qreal lm = 0.0, rm = 0.0, tm = 0.0, bm = 0.0;
                   while (e.readNextStartElement()) {
@@ -396,18 +391,11 @@ void PageFormat::read(XmlReader& e, Score* score)
                   _size.rheight() = e.readDouble() * 0.5 / PPI;
             else if (tag == "page-width")
                   _size.rwidth() = e.readDouble() * .5 / PPI;
-            else if (tag == "page-offset") {           // obsolete, moved to Score
-                  QString val(e.readElementText());
-                  if(score)
-                        score->setPageNumberOffset(val.toInt());
-                  }
             else
                   e.unknown();
             }
-      if (landscape)
-            _size.transpose();
-      qreal w1 = _size.width() - _oddLeftMargin - _oddRightMargin;
-      qreal w2 = _size.width() - _evenLeftMargin - _evenRightMargin;
+      qreal w1        = _size.width() - _oddLeftMargin - _oddRightMargin;
+      qreal w2        = _size.width() - _evenLeftMargin - _evenRightMargin;
       _printableWidth = qMin(w1, w2);     // silently adjust right margins
       }
 
@@ -415,7 +403,7 @@ void PageFormat::read(XmlReader& e, Score* score)
 //   write
 //---------------------------------------------------------
 
-void PageFormat::write(Xml& xml) const
+void PageFormat::write(XmlWriter& xml) const
       {
       xml.stag("page-layout");
 
@@ -502,6 +490,8 @@ void Page::doRebuildBspTree()
 //    $P          - page number, on all pages
 //    $N          - page number, if there is more than one
 //    $n          - number of pages
+//    $i          - part name, except on first page
+//    $I          - part name, on all pages
 //    $f          - file name
 //    $F          - file path+name
 //    $d          - current date
@@ -511,7 +501,7 @@ void Page::doRebuildBspTree()
 //    $C          - copyright, on first page only
 //    $c          - copyright, on all pages
 //    $$          - the $ sign itself
-//    $:tag:      - meta data tag
+//    $:tag:      - any metadata tag
 //
 //       tags already defined:
 //       (see Score::init()))
@@ -546,6 +536,11 @@ QString Page::replaceTextMacros(const QString& s) const
                               break;
                         case 'n':
                               d += QString("%1").arg(score()->npages() + score()->pageNumberOffset());
+                              break;
+                        case 'i': // not on first page
+                              if (_no) // FALLTHROUGH
+                        case 'I':
+                              d += score()->metaTag("partName").toHtmlEscaped();
                               break;
                         case 'f':
                               d += masterScore()->fileInfo()->completeBaseName().toHtmlEscaped();
@@ -626,7 +621,7 @@ bool Page::isOdd() const
 //   write
 //---------------------------------------------------------
 
-void Page::write(Xml& xml) const
+void Page::write(XmlWriter& xml) const
       {
       xml.stag("Page");
       foreach(System* system, _systems) {

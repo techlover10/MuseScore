@@ -19,13 +19,10 @@
 */
 
 #include "measurebase.h"
-class QPainter;
 
 namespace Ms {
 
 class MuseScoreView;
-
-static constexpr qreal BOX_MARGIN = 0.0;
 
 //---------------------------------------------------------
 //   @@ Box
@@ -35,15 +32,19 @@ static constexpr qreal BOX_MARGIN = 0.0;
 class Box : public MeasureBase {
       Q_OBJECT
 
-      Spatium _boxWidth  { Spatium(0) };  // only valid for HBox
-      Spatium _boxHeight { Spatium(0) };  // only valid for VBox
-      qreal _topGap      { 0.0 };         // distance from previous system (left border for hbox)
-                                          // initialized with StyleIdx::systemFrameDistance
-      qreal _bottomGap   { 0.0 };         // distance to next system (right border for hbox)
-                                          // initialized with StyleIdx::frameSystemDistance
-      qreal _leftMargin { BOX_MARGIN }, _rightMargin { BOX_MARGIN };   // inner margins in metric mm
-      qreal _topMargin  { BOX_MARGIN }, _bottomMargin { BOX_MARGIN };
-      bool editMode     { false };
+      Spatium _boxWidth             { Spatium(0) };  // only valid for HBox
+      Spatium _boxHeight            { Spatium(0) };  // only valid for VBox
+      qreal _topGap                 { 0.0   };       // distance from previous system (left border for hbox)
+                                                     // initialized with StyleIdx::systemFrameDistance
+      qreal _bottomGap              { 0.0   };       // distance to next system (right border for hbox)
+                                                     // initialized with StyleIdx::frameSystemDistance
+      qreal _leftMargin             { 0.0   };
+      qreal _rightMargin            { 0.0   };       // inner margins in metric mm
+      qreal _topMargin              { 0.0   };
+      qreal _bottomMargin           { 0.0   };
+      bool editMode                 { false };
+      PropertyStyle topGapStyle     { PropertyStyle::STYLED };
+      PropertyStyle bottomGapStyle  { PropertyStyle::STYLED };
       qreal dragX;                        // used during drag of hbox
 
    public:
@@ -57,9 +58,9 @@ class Box : public MeasureBase {
       virtual void updateGrips(Grip*, QVector<QRectF>&) const override;
       virtual int grips() const override { return 1; }
       virtual void layout() override;
-      virtual void write(Xml&) const override;
-      virtual void write(Xml& xml, int, bool) const override { write(xml); }
-      virtual void writeProperties(Xml&) const override;
+      virtual void write(XmlWriter&) const override;
+      virtual void write(XmlWriter& xml, int, bool) const override { write(xml); }
+      virtual void writeProperties(XmlWriter&) const override;
       virtual bool readProperties(XmlReader&) override;
       virtual void read(XmlReader&) override;
       virtual bool acceptDrop(const DropData&) const override;
@@ -87,6 +88,10 @@ class Box : public MeasureBase {
       virtual QVariant getProperty(P_ID propertyId) const override;
       virtual bool setProperty(P_ID propertyId, const QVariant&) override;
       virtual QVariant propertyDefault(P_ID) const override;
+      virtual PropertyStyle propertyStyle(P_ID id) const override;
+      virtual void resetProperty(P_ID id) override;
+      virtual void styleChanged() override;
+      virtual StyleIdx getPropertyStyle(P_ID id) const override;
       };
 
 //---------------------------------------------------------
@@ -96,6 +101,8 @@ class Box : public MeasureBase {
 
 class HBox : public Box {
       Q_OBJECT
+
+      bool _createSystemHeader { true };
 
    public:
       HBox(Score* score);
@@ -109,6 +116,14 @@ class HBox : public Box {
       virtual void endEditDrag() override;
       void layout2();
       virtual bool isMovable() const override;
+      virtual void computeMinWidth();
+
+      bool createSystemHeader() const      { return _createSystemHeader; }
+      void setCreateSystemHeader(bool val) { _createSystemHeader = val;  }
+
+      virtual QVariant getProperty(P_ID propertyId) const override;
+      virtual bool setProperty(P_ID propertyId, const QVariant&) override;
+      virtual QVariant propertyDefault(P_ID) const override;
       };
 
 //---------------------------------------------------------

@@ -17,12 +17,7 @@
 
 namespace Ms {
 
-class Segment;
 class Spanner;
-class System;
-class Chord;
-class ChordRest;
-class Note;
 
 //---------------------------------------------------------
 //   SpannerSegmentType
@@ -59,6 +54,8 @@ class SpannerSegment : public Element {
       SpannerSegmentType spannerSegmentType() const    { return _spannerSegmentType;            }
       bool isSingleType() const                        { return spannerSegmentType() == SpannerSegmentType::SINGLE; }
       bool isBeginType() const                         { return spannerSegmentType() == SpannerSegmentType::BEGIN;  }
+      bool isSingleBeginType() const                   { return isSingleType() || isBeginType(); }
+      bool isSingleEndType() const                     { return isSingleType() || isEndType(); }
       bool isMiddleType() const                        { return spannerSegmentType() == SpannerSegmentType::MIDDLE; }
       bool isEndType() const                           { return spannerSegmentType() == SpannerSegmentType::END;    }
 
@@ -68,6 +65,9 @@ class SpannerSegment : public Element {
       const QPointF& userOff2() const       { return _userOff2;       }
       void setUserOff2(const QPointF& o)    { _userOff2 = o;          }
       void setUserXoffset2(qreal x)         { _userOff2.setX(x);      }
+      qreal& rUserXoffset2()                { return _userOff2.rx();  }
+      qreal& rUserYoffset2()                { return _userOff2.ry();  }
+
       void setPos2(const QPointF& p)        { _p2 = p;                }
       QPointF pos2() const                  { return _p2 + _userOff2; }
       const QPointF& ipos2() const          { return _p2;             }
@@ -127,6 +127,7 @@ class Spanner : public Element {
       int _tick              { -1 };
       int _ticks             {  0 };
       int _track2            { -1 };
+      bool _broken           { false };
 
       static QList<QPointF> userOffsets;
       static QList<QPointF> userOffsets2;
@@ -154,14 +155,19 @@ class Spanner : public Element {
       void setTick2(int v);
       void setTicks(int v);
 
-      int track2() const       { return _track2;        }
-      void setTrack2(int v)    { _track2 = v;           }
+      int track2() const       { return _track2;   }
+      void setTrack2(int v)    { _track2 = v;      }
+
+      bool broken() const      { return _broken;   }
+      void setBroken(bool v)   { _broken = v;      }
 
       Anchor anchor() const    { return _anchor;   }
       void setAnchor(Anchor a) { _anchor = a;      }
 
       const QList<SpannerSegment*>& spannerSegments() const { return segments; }
       QList<SpannerSegment*>& spannerSegments()             { return segments; }
+
+      virtual SpannerSegment* layoutSystem(System*);
 
       virtual void triggerLayout() const override;
       virtual void add(Element*) override;

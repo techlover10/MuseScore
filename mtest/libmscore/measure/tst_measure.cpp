@@ -25,6 +25,7 @@
 #include "libmscore/image.h"
 #include "libmscore/element.h"
 #include "libmscore/system.h"
+#include "libmscore/durationtype.h"
 #include "mtest/testutils.h"
 
 #define DIR QString("libmscore/measure/")
@@ -53,7 +54,11 @@ class TestMeasure : public QObject, public MTest
       void spanner_B();
       void spanner_C();
       void spanner_D();
-      void minWidth();
+      void deleteLast();
+//      void minWidth();
+
+      void gap();
+      void checkMeasure();
       };
 
 //---------------------------------------------------------
@@ -179,14 +184,15 @@ void TestMeasure::insertBfKeyChange()
 //   minWidth
 //---------------------------------------------------------
 
+#if 0
 void TestMeasure::minWidth()
       {
       MasterScore* score = readScore(DIR + "measure-2.mscx");
 
-//      int n = score->systems().size();
-//      int measuresSystem[n];
-//      for (int i = 0; i < n; ++i)
-//            measuresSystem[i] = score->systems().at(i)->measures().size();
+      int n = score->systems().size();
+      int measuresSystem[n];
+      for (int i = 0; i < n; ++i)
+            measuresSystem[i] = score->systems().at(i)->measures().size();
 
       score->doLayout();
 
@@ -200,13 +206,12 @@ void TestMeasure::minWidth()
       QCOMPARE(mw1, m1->minWidth1());
       QCOMPARE(mw2, m2->minWidth1());
 
-//TODO      // after second layout nothing should be changed:
-//      for (int i = 0; i < n; ++i) {
-//            printf("==%d %d == %d\n", i,
-//               measuresSystem[i], score->systems()->at(i)->measures().size());
-//            QCOMPARE(measuresSystem[i], score->systems()->at(i)->measures().size());
-//            }
+      // after second layout nothing should be changed:
+      for (int i = 0; i < n; ++i) {
+            QCOMPARE(measuresSystem[i], int(score->systems().at(i)->measures().size()));
+            }
       }
+#endif
 
 //---------------------------------------------------------
 ///   spanner_a
@@ -259,10 +264,9 @@ void TestMeasure::spanner_A()
       {
       MasterScore* score = readScore(DIR + "measure-6.mscx");
 
-      Measure* m = score->firstMeasure();
+      score->select(score->firstMeasure());
       score->startCmd();
-      score->select(m);
-      score->cmdDeleteSelectedMeasures();
+      score->localTimeDelete();
       score->endCmd();
       QVERIFY(saveCompareScore(score, "measure-6.mscx", DIR + "measure-6-ref.mscx"));
       delete score;
@@ -280,10 +284,10 @@ void TestMeasure::spanner_B()
       {
       MasterScore* score = readScore(DIR + "measure-7.mscx");
 
-      score->startCmd();
       Measure* m = score->firstMeasure()->nextMeasure();
       score->select(m);
-      score->cmdDeleteSelectedMeasures();
+      score->startCmd();
+      score->localTimeDelete();
       score->endCmd();
 
       QVERIFY(saveCompareScore(score, "measure-7.mscx", DIR + "measure-7-ref.mscx"));
@@ -302,10 +306,10 @@ void TestMeasure::spanner_C()
       {
       MasterScore* score = readScore(DIR + "measure-8.mscx");
 
-      score->startCmd();
       Measure* m = score->firstMeasure()->nextMeasure();
       score->select(m);
-      score->cmdDeleteSelectedMeasures();
+      score->startCmd();
+      score->localTimeDelete();
       score->endCmd();
 
       QVERIFY(saveCompareScore(score, "measure-8.mscx", DIR + "measure-8-ref.mscx"));
@@ -324,15 +328,136 @@ void TestMeasure::spanner_D()
       {
       MasterScore* score = readScore(DIR + "measure-9.mscx");
 
-      score->startCmd();
       Measure* m = score->firstMeasure()->nextMeasure();
       score->select(m);
-      score->cmdDeleteSelectedMeasures();
+
+      score->startCmd();
+      score->localTimeDelete();
       score->endCmd();
 
       QVERIFY(saveCompareScore(score, "measure-9.mscx", DIR + "measure-9-ref.mscx"));
       delete score;
       }
+
+//---------------------------------------------------------
+//    deleteLast
+//---------------------------------------------------------
+
+void TestMeasure::deleteLast()
+      {
+      MasterScore* score = readScore(DIR + "measure-10.mscx");
+
+      Measure* m = score->lastMeasure();
+      score->select(m);
+
+      score->startCmd();
+      score->localTimeDelete();
+      score->endCmd();
+
+      QVERIFY(saveCompareScore(score, "measure-10.mscx", DIR + "measure-10-ref.mscx"));
+      delete score;
+      }
+
+
+//---------------------------------------------------------
+///   gaps
+//
+//    delete rests and check reorganization of lengths
+//
+//---------------------------------------------------------
+
+void TestMeasure::gap()
+      {
+      MasterScore* score = readScore(DIR + "gaps.mscx");
+      Element* tst       = 0;
+
+      //Select and delete third quarter rest in first Measure (voice 2)
+      score->startCmd();
+      Measure* m  = score->firstMeasure();
+      Segment* s  = m->undoGetSegment(Segment::Type::ChordRest, 960);
+      Element* el = s->element(1);
+      score->select(el);
+      score->cmdDeleteSelection();
+      score->endCmd();
+
+      tst = s->element(1);
+      Q_ASSERT(tst);
+
+      QVERIFY(tst->isRest() && toRest(tst)->isGap() /*&& toRest(tst)->durationType() == TDuration::DurationType::V_QUARTER*/);
+
+      //Select and delete second quarter rest in third Measure (voice 4)
+      score->startCmd();
+      m  = m->nextMeasure()->nextMeasure();
+      s  = m->undoGetSegment(Segment::Type::ChordRest, 4320);
+      el = s->element(3);
+      score->select(el);
+      score->cmdDeleteSelection();
+      score->endCmd();
+
+      tst = s->element(3);
+      Q_ASSERT(tst);
+
+      QVERIFY(tst->isRest() && toRest(tst)->isGap() /*&& toRest(tst)->durationType() == TDuration::DurationType::V_QUARTER*/);
+
+      //Select and delete first quarter rest in third Measure (voice 4)
+      score->startCmd();
+      s  = m->undoGetSegment(Segment::Type::ChordRest, 3840);
+      el = s->element(3);
+      score->select(el);
+      score->cmdDeleteSelection();
+      score->endCmd();
+
+      tst = s->element(3);
+      Q_ASSERT(tst);
+
+      QVERIFY(tst->isRest() && toRest(tst)->isGap() && toRest(tst)->actualTicks() == 960/*&& toRest(tst)->durationType() == TDuration::DurationType::V_HALF*/);
+
+
+      delete score;
+      }
+
+//---------------------------------------------------------
+///   checkMeasure
+//
+//    import a Score with gaps in excerpt and
+//
+//---------------------------------------------------------
+
+void TestMeasure::checkMeasure()
+      {
+      MasterScore* score = readScore(DIR + "checkMeasure.mscx");
+      Element* tst       = 0;
+      Measure* m         = score->firstMeasure()->nextMeasure();
+
+      Segment* s = m->undoGetSegment(Segment::Type::ChordRest, 2880);
+      tst = s->element(1);
+      Q_ASSERT(tst);
+
+      QVERIFY(tst->isRest() && toRest(tst)->isGap() && toRest(tst)->actualTicks() == 480/*&& toRest(tst)->durationType() == TDuration::DurationType::V_HALF*/);
+
+      m = m->nextMeasure();
+//      s = m->undoGetSegment(Segment::Type::ChordRest, 3840);
+//      tst = s->element(2);
+//      Q_ASSERT(tst);
+
+//      QVERIFY(tst->isRest() && toRest(tst)->isGap() && toRest(tst)->actualTicks() == 480/*&& toRest(tst)->durationType() == TDuration::DurationType::V_HALF*/);
+
+      m = m->nextMeasure();
+      s = m->undoGetSegment(Segment::Type::ChordRest, 6240);
+      tst = s->element(1);
+      Q_ASSERT(tst);
+
+      QVERIFY(tst->isRest() && toRest(tst)->isGap() && toRest(tst)->actualTicks() == 120/*&& toRest(tst)->durationType() == TDuration::DurationType::V_HALF*/);
+
+      s = m->undoGetSegment(Segment::Type::ChordRest, 6480);
+      tst = s->element(1);
+      Q_ASSERT(tst);
+
+      QVERIFY(tst->isRest() && toRest(tst)->isGap() && toRest(tst)->actualTicks() == 120/*&& toRest(tst)->durationType() == TDuration::DurationType::V_HALF*/);
+
+      delete score;
+      }
+
 
 
 QTEST_MAIN(TestMeasure)

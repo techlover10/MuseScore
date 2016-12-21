@@ -32,7 +32,7 @@ namespace Ms {
 
 class Omr;
 class Score;
-class Xml;
+class XmlWriter;
 class XmlReader;
 class Pattern;
 class OmrPage;
@@ -176,8 +176,9 @@ class OmrSystem {
       QList<QLine> barLines;
 
       void searchSysBarLines();
-      float searchBarLinesvar(int n_staff/*, float *bar_score_vector*/);
+      float searchBarLinesvar(int n_staff, int **note_labels);
       void searchNotes();
+      void searchNotes(int *note_labels, int ran);
       };
 
 //---------------------------------------------------------
@@ -200,6 +201,7 @@ class OmrPage {
       QList<QLine>  lines;
       QList<OmrSystem> _systems;
 
+      void removeBorder();
       void crop();
       void slice();
       double skew(const QRect&);
@@ -244,7 +246,7 @@ class OmrPage {
       OmrSystem* system(int idx)  { return &_systems[idx]; }
 
 
-      void write(Xml&) const;
+      void write(XmlWriter&) const;
       void read(XmlReader&);
       bool dot(int x, int y) const;
       bool isBlack(int x, int y) const;

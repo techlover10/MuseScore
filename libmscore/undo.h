@@ -60,7 +60,7 @@ class Chord;
 class ChordRest;
 class Harmony;
 class SlurTie;
-struct MStaff;
+class MStaff;
 class MeasureBase;
 class Dynamic;
 class Selection;
@@ -83,6 +83,7 @@ class Spanner;
 class BarLine;
 enum class ClefType : signed char;
 enum class PlayEventType : char;
+class Excerpt;
 
 #define UNDO_NAME(a)  virtual const char* name() const override { return a; }
 
@@ -434,10 +435,30 @@ class ExchangeVoice : public UndoCommand {
       int staff;
 
    public:
-      ExchangeVoice(Measure*, int val1, int val2, int staff);
+      ExchangeVoice(Measure* ,int val1, int val2, int staff);
       virtual void undo();
       virtual void redo();
       UNDO_NAME("ExchangeVoice")
+      };
+
+//---------------------------------------------------------
+//   CloneVoice
+//---------------------------------------------------------
+
+class CloneVoice : public UndoCommand {
+      Segment* sf;
+      int lTick;
+      Segment* d;             //Destination
+      int strack, dtrack;
+      int otrack;
+      bool linked;
+      bool first = true;      //first redo
+
+   public:
+      CloneVoice(Segment* sf, int lTick, Segment* d, int strack, int dtrack, int otrack, bool linked = true);
+      virtual void undo();
+      virtual void redo();
+      UNDO_NAME("CloneVoice")
       };
 
 //---------------------------------------------------------
@@ -544,20 +565,6 @@ class RemoveElement : public UndoCommand {
       virtual void redo();
       virtual void cleanup(bool);
       virtual const char* name() const override;
-      };
-
-//---------------------------------------------------------
-//   ChangeConcertPitch
-//---------------------------------------------------------
-
-class ChangeConcertPitch : public UndoCommand {
-      Score* score;
-      bool val;
-      void flip();
-
-   public:
-      ChangeConcertPitch(Score* s, bool val);
-      UNDO_NAME("ChangeConcertPitch")
       };
 
 //---------------------------------------------------------
@@ -760,13 +767,14 @@ class ChangeVelocity : public UndoCommand {
 //---------------------------------------------------------
 
 class ChangeMStaffProperties : public UndoCommand {
-      MStaff* mstaff;
+      Measure* measure;
+      int staffIdx;
       bool visible;
       bool slashStyle;
       void flip();
 
    public:
-      ChangeMStaffProperties(MStaff*, bool visible, bool slashStyle);
+      ChangeMStaffProperties(Measure*, int staffIdx, bool visible, bool slashStyle);
       UNDO_NAME("ChangeMStaffProperties")
       };
 
@@ -837,10 +845,10 @@ class ChangeImage : public UndoCommand {
 //---------------------------------------------------------
 
 class AddExcerpt : public UndoCommand {
-      Score* score;
+      Excerpt* excerpt;
 
    public:
-      AddExcerpt(Score* s) : score(s) {}
+      AddExcerpt(Excerpt* ex) : excerpt(ex) {}
       virtual void undo();
       virtual void redo();
       UNDO_NAME("AddExcerpt")
@@ -851,10 +859,10 @@ class AddExcerpt : public UndoCommand {
 //---------------------------------------------------------
 
 class RemoveExcerpt : public UndoCommand {
-      Score* score;
+      Excerpt* excerpt;
 
    public:
-      RemoveExcerpt(Score* s) : score(s) {}
+      RemoveExcerpt(Excerpt* ex) : excerpt(ex) {}
       virtual void undo();
       virtual void redo();
       UNDO_NAME("RemoveExcerpt")
@@ -869,11 +877,26 @@ class SwapExcerpt : public UndoCommand {
       int pos1;
       int pos2;
 
+      void flip();
+
    public:
       SwapExcerpt(MasterScore* s, int p1, int p2) : score(s), pos1(p1), pos2(p2) {}
-      virtual void undo();
-      virtual void redo();
       UNDO_NAME("SwapExcerpt")
+      };
+
+//---------------------------------------------------------
+//   ChangeExcerptTitle
+//---------------------------------------------------------
+
+class ChangeExcerptTitle : public UndoCommand {
+      Excerpt* excerpt;
+      QString title;
+
+      void flip();
+
+   public:
+      ChangeExcerptTitle(Excerpt* x, const QString& t) : excerpt(x), title(t) {}
+      UNDO_NAME("ChangeExcerptTitle")
       };
 
 //---------------------------------------------------------
@@ -1222,7 +1245,7 @@ class Unlink : public LinkUnlink {
 class Link : public LinkUnlink {
 
    public:
-      Link(ScoreElement* e, ScoreElement* le) : LinkUnlink(e, le) {}
+      Link(ScoreElement* e, ScoreElement* le) : LinkUnlink(le, e) {}
       virtual void undo() override { doUnlink(); }
       virtual void redo() override { doLink();   }
       UNDO_NAME("Link")

@@ -56,10 +56,11 @@
 #include "fraction.h"
 #include "excerpt.h"
 #include "spatium.h"
+#include "barline.h"
 
 namespace Ms {
 
-bool MScore::debugMode;
+bool MScore::debugMode = false;
 bool MScore::testMode = false;
 
 // #ifndef NDEBUG
@@ -69,6 +70,7 @@ bool MScore::noHorizontalStretch = false;
 bool MScore::noVerticalStretch   = false;
 bool MScore::showBoundingRect    = false;
 bool MScore::showCorruptedMeasures = true;
+bool MScore::useFallbackFont       = true;
 // #endif
 
 bool  MScore::saveTemplateMode = false;
@@ -108,6 +110,9 @@ int     MScore::mtcType;
 bool    MScore::noExcerpts = false;
 bool    MScore::noImages = false;
 bool    MScore::pdfPrinting = false;
+double  MScore::pixelRatio  = 0.8;        // DPI / logicalDPI
+
+MPaintDevice* MScore::_paintDevice;
 
 #ifdef SCRIPT_INTERFACE
 QQmlEngine* MScore::_qml = 0;
@@ -119,6 +124,36 @@ MuseScoreCore* MuseScoreCore::mscoreCore;
 extern void initDrumset();
 extern void initScoreFonts();
 extern QString mscoreGlobalShare;
+
+#define TR(a) QT_TRANSLATE_NOOP("error", a)
+std::vector<MScoreError> MScore::errorList {
+      { MS_NO_ERROR,                     0,    0                                                                           },
+
+      { NO_NOTE_SELECTED,                "s1", TR("No note selected:\nPlease select a note and retry\n")                   },
+      { NO_CHORD_REST_SELECTED,          "s2", TR("No chord/rest selected:\nPlease select a chord or rest and retry")      },
+      { NO_LYRICS_SELECTED,              "s3", TR("No note or lyrics selected:\nPlease select a note or lyrics and retry") },
+      { NO_NOTE_REST_SELECTED,           "s4", TR("No note or rest selected:\nPlease select a note or rest and retry")     },
+      { NO_NOTE_SLUR_SELECTED,           "s5", TR("No note or slur selected:\nPlease select a note or slur and retry")     },
+      { NO_STAFF_SELECTED,               "s6", TR("No staff selected:\nPlease select one or more staves and retry\n")      },
+      { NO_NOTE_FIGUREDBASS_SELECTED,    "s7", TR("No note or figured bass selected:\nPlease select a note or figured bass and retry") },
+
+      { CANNOT_INSERT_TUPLET,            "t1", TR("Cannot insert chord/rest in tuplet")                                    },
+      { CANNOT_SPLIT_TUPLET,             "t2", TR("Cannot split tuplet")                                                   },
+      { CANNOT_SPLIT_MEASURE_FIRST_BEAT, "m1", TR("Cannot split measure here:\n" "First beat of measure")                  },
+      { CANNOT_SPLIT_MEASURE_TUPLET,     "m2", TR("Cannot split measure here:\n" "Cannot split tuplet")                    },
+
+      { NO_DEST,                         "p1", TR("No destination to paste")                                               },
+      { DEST_TUPLET,                     "p2", TR("Cannot paste into tuplet")                                              },
+      { TUPLET_CROSSES_BAR,              "p3", TR("Tuplet cannot cross barlines")                                          },
+      { DEST_LOCAL_TIME_SIGNATURE,       "p4", TR("Cannot paste in local time signature")                                  },
+      { DEST_TREMOLO,                    "p5", TR("Cannot paste in tremolo")                                               },
+      { NO_MIME,                         "p6", TR("Nothing to paste")                                                      },
+      { DEST_NO_CR,                      "p7", TR("Destination is not a chord or rest")                                    },
+      { CANNOT_CHANGE_LOCAL_TIMESIG,     "l1", TR("Cannot change local time signature:\nMeasure is not empty")             },
+      };
+#undef TR
+
+MsError MScore::_error { MS_NO_ERROR };
 
 //---------------------------------------------------------
 //   Direction
@@ -133,7 +168,7 @@ Direction::Direction(const QString& s)
       else if (s == "auto")
             val = AUTO;
       else
-            abort();
+            val = s.toInt();
       }
 
 //---------------------------------------------------------
@@ -163,6 +198,7 @@ void Direction::fillComboBox(QComboBox* cb)
       }
 
 static Spatium doubleToSpatium(double d)       { return Spatium(d); }
+static TextStyleType intToTextStyleType(int i) { return TextStyleType(i); }
 
 //---------------------------------------------------------
 //   init
@@ -174,7 +210,8 @@ void MScore::init()
             qFatal("registerConverter Spatium::toDouble failed");
       if (!QMetaType::registerConverter<double, Spatium>(&doubleToSpatium))
             qFatal("registerConverter douobleToSpatium failed");
-
+      if (!QMetaType::registerConverter<int, TextStyleType>(&intToTextStyleType))
+            qFatal("registerConverter intToTextStyleType failed");
 
 #ifdef SCRIPT_INTERFACE
       qRegisterMetaType<Element::Type>     ("ElementType");
@@ -198,14 +235,16 @@ void MScore::init()
       qRegisterMetaType<Jump::Type>("JumpType");
       qRegisterMetaType<Marker::Type>("MarkerType");
       qRegisterMetaType<Beam::Mode>("BeamMode");
-      qRegisterMetaType<Hairpin::Type>("HairpinType");
+      qRegisterMetaType<HairpinType>("HairpinType");
       qRegisterMetaType<Lyrics::Syllabic>("Syllabic");
       qRegisterMetaType<LayoutBreak::Type>("LayoutBreakType");
       qRegisterMetaType<Glissando::Type>("GlissandoType");
 
       //classed enumerations
       qRegisterMetaType<MSQE_TextStyleType::E>("TextStyleType");
+      qRegisterMetaType<MSQE_BarLineType::E>("BarLineType");
 #endif
+      qRegisterMetaType<Fraction>("Fraction");
 
 //      DPMM = DPI / INCH;       // dots/mm
 
@@ -262,7 +301,7 @@ void MScore::init()
       //
 #if !defined(Q_OS_MAC) && !defined(Q_OS_IOS)
       static const char* fonts[] = {
-            ":/fonts/MuseJazz.ttf",
+            ":/fonts/musejazz/MuseJazzText.otf",
             ":/fonts/FreeSans.ttf",
             ":/fonts/FreeSerif.ttf",
             ":/fonts/FreeSerifBold.ttf",
@@ -356,6 +395,32 @@ void MScore::defaultStyleForPartsHasChanged()
       _defaultStyleForParts = 0;
       }
 
+//---------------------------------------------------------
+//   errorMessage
+//---------------------------------------------------------
+
+const char* MScore::errorMessage()
+      {
+      for (MScoreError& e : errorList) {
+            if (e.no == _error)
+                  return e.txt;
+            }
+      return "unknown error";
+      }
+
+//---------------------------------------------------------
+//   errorGroup
+//---------------------------------------------------------
+
+const char* MScore::errorGroup()
+      {
+      for (MScoreError& e : errorList) {
+            if (e.no == _error)
+                  return e.group;
+            }
+      return "";
+      }
+
 #ifdef SCRIPT_INTERFACE
 //---------------------------------------------------------
 //   qml
@@ -415,6 +480,8 @@ QQmlEngine* MScore::qml()
             qmlRegisterType<StemSlash>  ("MuseScore", 1, 0, "StemSlash");
             qmlRegisterType<Beam>       ("MuseScore", 1, 0, "Beam");
             qmlRegisterType<Excerpt>    ("MuseScore", 1, 0, "Excerpt");
+            qmlRegisterType<BarLine>    ("MuseScore", 1, 0, "BarLine");
+
             qmlRegisterType<FractionWrapper>   ("MuseScore", 1, 1, "Fraction");
             qRegisterMetaType<FractionWrapper*>("FractionWrapper*");
 
@@ -423,6 +490,7 @@ QQmlEngine* MScore::qml()
 
             //classed enumerations
             qmlRegisterUncreatableType<MSQE_TextStyleType>("MuseScore", 1, 0, "TextStyleType", tr("You can't create an enum"));
+            qmlRegisterUncreatableType<MSQE_BarLineType>("MuseScore", 1, 0, "BarLineType", tr("You can't create an enum"));
 
             //-----------virtual classes
             qmlRegisterType<ChordRest>();
@@ -431,6 +499,44 @@ QQmlEngine* MScore::qml()
             }
       return _qml;
       }
+
+//---------------------------------------------------------
+//   paintDevice
+//---------------------------------------------------------
+
+MPaintDevice* MScore::paintDevice()
+      {
+      if (!_paintDevice)
+            _paintDevice = new MPaintDevice();
+      return _paintDevice;
+      }
+
+//---------------------------------------------------------
+//   metric
+//---------------------------------------------------------
+
+int MPaintDevice::metric(PaintDeviceMetric m) const
+      {
+      switch (m) {
+            case QPaintDevice::PdmDpiY:
+                  return int(DPI);
+            default:
+                  printf("debug: metric %d\n", int(m));
+                  return 1;
+            }
+      return 0;
+      }
+
+//---------------------------------------------------------
+//   paintEngine
+//---------------------------------------------------------
+
+QPaintEngine* MPaintDevice::paintEngine() const
+      {
+      printf("paint engine\n");
+      return 0;
+      }
+
 #endif
 }
 

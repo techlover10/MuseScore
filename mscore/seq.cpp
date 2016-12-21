@@ -139,8 +139,8 @@ Seq::Seq()
       playlistChanged = false;
       cs              = 0;
       cv              = 0;
-      tackRest        = 0;
-      tickRest        = 0;
+      tackRemain        = 0;
+      tickRemain        = 0;
       maxMidiOutPort  = 0;
 
       endTick  = 0;
@@ -497,17 +497,15 @@ void Seq::playEvent(const NPlayEvent& event, unsigned framePos)
       {
       int type = event.type();
       if (type == ME_NOTEON) {
-            bool mute;
+            bool mute = false;
             const Note* note = event.note();
 
             if (note) {
-                  Instrument* instr = note->staff()->part()->instrument(note->chord()->tick());
+                  Staff* staff      = note->staff();
+                  Instrument* instr = staff->part()->instrument(note->chord()->tick());
                   const Channel* a = instr->channel(note->subchannel());
-                  mute = a->mute || a->soloMute;
+                  mute = a->mute || a->soloMute || !staff->playbackVoice(note->voice());
                   }
-            else
-                  mute = false;
-
             if (!mute)
                   putEvent(event, framePos);
             }
@@ -582,32 +580,32 @@ void Seq::processMessages()
 void Seq::metronome(unsigned n, float* p, bool force)
       {
       if (!mscore->metronome() && !force) {
-            tickRest = 0;
-            tackRest = 0;
+            tickRemain = 0;
+            tackRemain = 0;
             return;
             }
-      if (tickRest) {
-            tackRest = 0;
-            int idx = tickLength - tickRest;
-            int nn = n < tickRest ? n : tickRest;
+      if (tickRemain) {
+            tackRemain = 0;
+            int idx = tickLength - tickRemain;
+            int nn = n < tickRemain ? n : tickRemain;
             for (int i = 0; i < nn; ++i) {
-                  qreal v = tick[idx] * metronomeVolume;
+                  qreal v = tick[idx] * tickVolume * metronomeVolume;
                   *p++ += v;
                   *p++ += v;
                   ++idx;
                   }
-            tickRest -= nn;
+            tickRemain -= nn;
             }
-      if (tackRest) {
-            int idx = tackLength - tackRest;
-            int nn = n < tackRest ? n : tackRest;
+      if (tackRemain) {
+            int idx = tackLength - tackRemain;
+            int nn = n < tackRemain ? n : tackRemain;
             for (int i = 0; i < nn; ++i) {
-                  qreal v = tack[idx] * metronomeVolume;
+                  qreal v = tack[idx] * tackVolume * metronomeVolume;
                   *p++ += v;
                   *p++ += v;
                   ++idx;
                   }
-            tackRest -= nn;
+            tackRemain -= nn;
             }
       }
 
@@ -617,13 +615,32 @@ void Seq::metronome(unsigned n, float* p, bool force)
 
 void Seq::addCountInClicks()
       {
-      int         plPos       = cs->playPos();
+      const int   plPos       = cs->playPos();
       Measure*    m           = cs->tick2measure(plPos);
-      int tick = cs->renderMetronome(&countInEvents, m, plPos, 0, true);
+      const int   msrTick     = m->tick();
+      const qreal tempo       = cs->tempomap()->tempo(msrTick);
+      TimeSigFrac timeSig     = cs->sigmap()->timesig(msrTick).nominal();
+
+      const int clickTicks = timeSig.isBeatedCompound(tempo) ? timeSig.beatTicks() : timeSig.dUnitTicks();
+
+      // add at least one full measure of just clicks.
+      int endTick = timeSig.ticksPerMeasure();
+
+      // add extra clicks if...
+      endTick += plPos - msrTick;   // ...not starting playback at beginning of measure
+
+      if (m->isAnacrusis())         // ...measure is incomplete (anacrusis)
+            endTick += timeSig.ticksPerMeasure() - m->ticks();
+
+      for (int tick = 0; tick < endTick; tick += clickTicks) {
+            const int rtick = tick % timeSig.ticksPerMeasure();
+            countInEvents.insert(std::pair<int,NPlayEvent>(tick, NPlayEvent(timeSig.rtick2beatType(rtick))));
+            }
+
       NPlayEvent event;
       event.setType(ME_INVALID);
       event.setPitch(0);
-      countInEvents.insert( std::pair<int,NPlayEvent>(tick, event));
+      countInEvents.insert( std::pair<int,NPlayEvent>(endTick, event));
       // initialize play parameters to count-in events
       countInPlayPos  = countInEvents.cbegin();
       countInPlayTime = 0;
@@ -670,12 +687,10 @@ void Seq::process(unsigned n, float* buffer)
                               _driver->startTransport();
                               }
                         }
-                  if (preferences.useJackMidi) { // TODO same for ALSA Midi
-                        // Initializing instruments every time we start playback.
-                        // External synth can have wrong values, for example
-                        // if we switch between scores
-                        initInstruments(true);
-                        }
+                  // Initializing instruments every time we start playback.
+                  // External synth can have wrong values, for example
+                  // if we switch between scores
+                  initInstruments(true);
                   // Need to change state after calling collectEvents()
                   state = Transport::PLAY;
                   if (mscore->countIn() && cs->playMode() == PlayMode::SYNTHESIZER) {
@@ -689,6 +704,7 @@ void Seq::process(unsigned n, float* buffer)
                   state = Transport::STOP;
                   // Muting all notes
                   stopNotes(-1, true);
+                  initInstruments(true);
                   if (playPos == events.cend()) {
                         if (mscore->loop()) {
                               qDebug("Seq.cpp - Process - Loop whole score. playPos = %d     cs->pos() = %d", playPos->first,cs->pos());
@@ -764,8 +780,9 @@ void Seq::process(unsigned n, float* buffer)
                               }
                         if (mscore->loop()) {
                               int utickLoop = cs->repeatList()->tick2utick(cs->loopOutTick());
-                              if (utickLoop < utickEnd)
-                                    if ((*pPlayPos)->first >= utickLoop) {
+                              if (utickLoop < utickEnd) {
+                                    // Also make sure we are not "before" the loop
+                                    if ((*pPlayPos)->first >= utickLoop || cs->repeatList()->utick2tick((*pPlayPos)->first) < cs->loopInTick()) {
                                           qDebug ("Process playPos = %d  in/out tick = %d/%d  getCurTick() = %d   tickLoop = %d   playTime = %d",
                                              (*pPlayPos)->first, cs->loopInTick(), cs->loopOutTick(), getCurTick(), utickLoop, *pPlayTime);
                                           if (preferences.useJackTransport) {
@@ -782,6 +799,7 @@ void Seq::process(unsigned n, float* buffer)
                                           // Exit this function to avoid segmentation fault in Scoreview
                                           return;
                                           }
+                                    }
                               }
                         }
                   if (n) {
@@ -813,10 +831,14 @@ void Seq::process(unsigned n, float* buffer)
                         }
                   const NPlayEvent& event = (*pPlayPos)->second;
                   playEvent(event, framePos);
-                  if (event.type() == ME_TICK1)
-                        tickRest = tickLength;
-                  else if (event.type() == ME_TICK2)
-                        tackRest = tackLength;
+                  if (event.type() == ME_TICK1) {
+                        tickRemain = tickLength;
+                        tickVolume = event.velo() ? qreal(event.value()) / 127.0 : 1.0;
+                        }
+                  else if (event.type() == ME_TICK2) {
+                        tackRemain = tackLength;
+                        tackVolume = event.velo() ? qreal(event.value()) / 127.0 : 1.0;
+                        }
                   mutex.lock();
                   ++(*pPlayPos);
                   mutex.unlock();
@@ -863,7 +885,22 @@ void Seq::process(unsigned n, float* buffer)
                   }
             }
       else {
-            _synti->process(frames, p);
+            // Outside of playback mode
+            while (!liveEventQueue()->empty()) {
+                  const NPlayEvent& event = liveEventQueue()->dequeue();
+                  if (event.type() == ME_TICK1) {
+                        tickRemain = tickLength;
+                        tickVolume = event.velo() ? qreal(event.value()) / 127.0 : 1.0;
+                        }
+                  else if (event.type() == ME_TICK2) {
+                        tackRemain = tackLength;
+                        tackVolume = event.velo() ? qreal(event.value()) / 127.0 : 1.0;
+                        }
+                  }
+            if (frames) {
+                  metronome(frames, p, true);
+                  _synti->process(frames, p);
+                  }
             }
       //
       // metering / master gain
@@ -1095,6 +1132,17 @@ void Seq::startNote(int channel, int pitch, int velo, int duration, double nt)
       stopNotes();
       startNote(channel, pitch, velo, nt);
       startNoteTimer(duration);
+      }
+
+//---------------------------------------------------------
+//   playMetronomeBeat
+//---------------------------------------------------------
+
+void Seq::playMetronomeBeat(BeatType type)
+      {
+      if (state != Transport::STOP)
+            return;
+      liveEventQueue()->enqueue(NPlayEvent(type));
       }
 
 //---------------------------------------------------------

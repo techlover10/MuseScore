@@ -13,6 +13,7 @@
 
 #include "libmscore/xml.h"
 #include "libmscore/note.h"
+#include "libmscore/sig.h"
 #include "event.h"
 
 namespace Ms {
@@ -21,7 +22,7 @@ namespace Ms {
 //   MidiCoreEvent::write
 //---------------------------------------------------------
 
-void MidiCoreEvent::write(Xml& xml) const
+void MidiCoreEvent::write(XmlWriter& xml) const
       {
       switch(_type) {
             case ME_NOTEON:
@@ -135,6 +136,35 @@ Event::~Event()
       }
 
 //---------------------------------------------------------
+//   NPlayEvent::NPlayEvent (beatType2metronomeEvent)
+//---------------------------------------------------------
+
+NPlayEvent::NPlayEvent(BeatType beatType)
+      {
+      setType(ME_TICK2);
+      setVelo(127);
+      switch (beatType) {
+            case BeatType::DOWNBEAT:
+                  setType(ME_TICK1);
+                  break;
+            case BeatType::SIMPLE_STRESSED:
+            case BeatType::COMPOUND_STRESSED:
+                  // use defaults
+                  break;
+            case BeatType::SIMPLE_UNSTRESSED:
+            case BeatType::COMPOUND_UNSTRESSED:
+                  setVelo(80);
+                  break;
+            case BeatType::COMPOUND_SUBBEAT:
+                  setVelo(25);
+                  break;
+            case BeatType::SUBBEAT:
+                  setVelo(15);
+                  break;
+            }
+      }
+
+//---------------------------------------------------------
 //   dump
 //---------------------------------------------------------
 
@@ -177,7 +207,7 @@ bool MidiCoreEvent::isChannelEvent() const
 //   Event::write
 //---------------------------------------------------------
 
-void Event::write(Xml& xml) const
+void Event::write(XmlWriter& xml) const
       {
       switch(_type) {
             case ME_NOTE:

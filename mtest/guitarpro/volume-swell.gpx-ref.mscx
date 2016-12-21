@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<museScore version="2.06">
+<museScore version="3.00">
   <Score>
     <LayerTag id="0" tag="default"></LayerTag>
     <currentLayer>0</currentLayer>
@@ -147,8 +147,9 @@
           <lid>9</lid>
           <durationType>quarter</durationType>
           <Articulation>
-            <subtype>volumeswell</subtype>
+            <subtype>guitarVolumeSwell</subtype>
             <lid>8</lid>
+            <anchor>0</anchor>
             </Articulation>
           <Note>
             <lid>10</lid>
@@ -162,7 +163,7 @@
           <lid>11</lid>
           <durationType>quarter</durationType>
           </Rest>
-        <tick>0</tick>
+        <move>0/1</move>
         <Rest>
           <lid>12</lid>
           <track>1</track>
@@ -353,8 +354,9 @@
             <lid>9</lid>
             <durationType>quarter</durationType>
             <Articulation>
-              <subtype>volumeswell</subtype>
+              <subtype>guitarVolumeSwell</subtype>
               <lid>8</lid>
+              <anchor>0</anchor>
               </Articulation>
             <Note>
               <lid>10</lid>
@@ -368,7 +370,7 @@
             <lid>11</lid>
             <durationType>quarter</durationType>
             </Rest>
-          <tick>0</tick>
+          <move>0/1</move>
           <Rest>
             <lid>12</lid>
             <track>1</track>
@@ -409,8 +411,9 @@
             <lid>9</lid>
             <durationType>quarter</durationType>
             <Articulation>
-              <subtype>volumeswell</subtype>
+              <subtype>guitarVolumeSwell</subtype>
               <lid>8</lid>
+              <anchor>0</anchor>
               </Articulation>
             <Note>
               <lid>10</lid>
@@ -424,7 +427,7 @@
             <lid>11</lid>
             <durationType>quarter</durationType>
             </Rest>
-          <tick>0</tick>
+          <move>0/1</move>
           <Rest>
             <lid>12</lid>
             <track>5</track>

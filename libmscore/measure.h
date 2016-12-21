@@ -24,7 +24,7 @@
 
 namespace Ms {
 
-class Xml;
+class XmlWriter;
 class Beam;
 class Tuplet;
 class Staff;
@@ -42,42 +42,7 @@ class Spanner;
 class Part;
 class RepeatMeasure;
 
-//---------------------------------------------------------
-//   MStaff
-///   Per staff values of measure.
-//---------------------------------------------------------
-
-struct MStaff {
-      Text* _noText        { 0 };         ///< Measure number text object
-      StaffLines*  lines   { 0 };
-      Spacer* _vspacerUp   { 0 };
-      Spacer* _vspacerDown { 0 };
-      Shape _shape;
-      bool hasVoices       { false };     ///< indicates that MStaff contains more than one voice,
-                                          ///< this changes some layout rules
-      bool _visible        { true };
-      bool _slashStyle     { false };
-#ifndef NDEBUG
-      bool _corrupted      { false };
-#endif
-      MStaff()  {}
-      ~MStaff();
-      MStaff(const MStaff&);
-
-      bool visible() const         { return _visible;    }
-      void setVisible(bool val)    { _visible = val;     }
-      bool slashStyle() const      { return _slashStyle; }
-      void setSlashStyle(bool val) { _slashStyle = val;  }
-
-      void setScore(Score*);
-      void setTrack(int);
-
-      Text* noText() const         { return _noText;     }
-      void setNoText(Text* t)      { _noText = t;        }
-
-      Shape& shape()               { return _shape; }
-      const Shape& shape() const   { return _shape; }
-      };
+class MStaff;
 
 //---------------------------------------------------------
 //   MeasureNumberMode
@@ -115,8 +80,6 @@ class Measure : public MeasureBase {
                               // 0 if this is the start of a mm rest (_mmRest != 0)
                               // < 0 if this measure is covered by a mm rest
 
-
-
       int _playbackCount;     // temp. value used in RepeatList
                               // counts how many times this measure was already played
 
@@ -127,6 +90,9 @@ class Measure : public MeasureBase {
 
       void push_back(Segment* e);
       void push_front(Segment* e);
+
+      void fillGap(const Fraction& pos, const Fraction& len, int track, const Fraction& stretch);
+      void computeMinWidth(Segment* s, qreal x, bool isSystemHeader);
 
    public:
       Measure(Score* = 0);
@@ -139,38 +105,45 @@ class Measure : public MeasureBase {
 
       void read(XmlReader&, int idx);
       void read(XmlReader& d) { read(d, 0); }
-      virtual void write(Xml& xml) const override { Element::write(xml); }
-      void write(Xml&, int, bool writeSystemElements) const;
-      void writeBox(Xml&) const;
+      virtual void write(XmlWriter& xml) const override { Element::write(xml); }
+      void write(XmlWriter&, int, bool writeSystemElements) const;
+      void writeBox(XmlWriter&) const;
       void readBox(XmlReader&);
       virtual bool isEditable() const override { return false; }
-      void checkMeasue(int idx);
+      void checkMeasure(int idx);
 
       virtual void add(Element*) override;
       virtual void remove(Element*) override;
       virtual void change(Element* o, Element* n) override;
       virtual void spatiumChanged(qreal oldValue, qreal newValue) override;
 
-      System* system() const                { return (System*)parent(); }
-      std::vector<MStaff*>& mstaves()       { return _mstaves;      }
-      const std::vector<MStaff*>& mstaves() const { return _mstaves;      }
-      MStaff* mstaff(int staffIdx)          { return _mstaves[staffIdx]; }
-      const MStaff* mstaff(int staffIdx) const { return _mstaves[staffIdx]; }
-      bool hasVoices(int staffIdx) const    { return _mstaves[staffIdx]->hasVoices; }
-      StaffLines* staffLines(int staffIdx)  { return _mstaves[staffIdx]->lines; }
+      System* system() const                      { return (System*)parent(); }
+      bool hasVoices(int staffIdx) const;
+      void setHasVoices(int staffIdx, bool v);
+
+      StaffLines* staffLines(int staffIdx);
+      Spacer* vspacerDown(int staffIdx) const;
+      Spacer* vspacerUp(int staffIdx) const;
+      void setStaffVisible(int staffIdx, bool visible);
+      void setStaffSlashStyle(int staffIdx, bool slashStyle);
+      bool corrupted(int staffIdx) const;
+      void setCorrupted(int staffIdx, bool val);
+      void setNoText(int staffIdx, Text*);
+      Text* noText(int staffIdx) const;
+      Shape staffShape(int staffIdx) const;
+      Shape& staffShape(int staffIdx);
+      void createStaves(int);
 
       MeasureNumberMode measureNumberMode() const     { return _noMode;      }
       void setMeasureNumberMode(MeasureNumberMode v)  { _noMode = v;         }
-
-      qreal minWidth1() const;
 
       Fraction timesig() const             { return _timesig;     }
       void setTimesig(const Fraction& f)   { _timesig = f;        }
       Fraction len() const                 { return _len;         }
       Fraction stretchedLen(Staff*) const;
       void setLen(const Fraction& f)       { _len = f;            }
-      // actual length of measure in ticks
-      virtual int ticks() const override;
+      virtual int ticks() const override;             // actual length of measure in ticks
+      bool isIrregular() const             { return _timesig != _len; }
 
       int size() const                          { return _segments.size();        }
       Ms::Segment* first() const                { return _segments.first();       }
@@ -213,14 +186,23 @@ class Measure : public MeasureBase {
       int repeatCount() const         { return _repeatCount; }
       void setRepeatCount(int val)    { _repeatCount = val; }
 
-      Segment* undoGetSegment(Segment::Type st, int tick);
-      Segment* getSegment(Element* el, int tick);
-      Segment* getSegment(Segment::Type st, int tick);
-      Segment* findSegment(Segment::Type st, int t);
+      Segment* undoGetSegment(Segment::Type st, int tick);  // deprecated
+      Segment* getSegment(Segment::Type st, int tick);      // deprecated
+      Segment* findSegment(Segment::Type st, int tick) const;     // deprecated
+
+      Segment* undoGetSegmentR(Segment::Type st, int rtick);
+      Segment* getSegmentR(Segment::Type st, int rtick);
+      Segment* findSegmentR(Segment::Type st, int rtick) const;
+
+      // preferred:
+      Segment* undoGetSegment(Segment::Type st, const Fraction& f) { return undoGetSegmentR(st, f.ticks()); }
+      Segment* getSegment(Segment::Type st, const Fraction& f)     { return getSegmentR(st, f.ticks()); }
+
+      Segment* findFirst(Segment::Type st, int rtick) const;
 
       qreal createEndBarLines(bool);
+      void barLinesSetSpan(Segment*);
       void setEndBarLineType(BarLineType val, int track, bool visible = true, QColor color = QColor());
-      void setStartRepeatBarLine();
 
       RepeatMeasure* cmdInsertRepeatMeasure(int staffIdx);
 
@@ -239,6 +221,7 @@ class Measure : public MeasureBase {
       bool visible(int staffIdx) const;
       bool slashStyle(int staffIdx) const;
       bool isFinalMeasureOfSection() const;
+      bool isAnacrusis() const;
 
       bool breakMultiMeasureRest() const        { return _breakMultiMeasureRest; }
       void setBreakMultiMeasureRest(bool val)   { _breakMultiMeasureRest = val;  }
@@ -269,13 +252,22 @@ class Measure : public MeasureBase {
       Element* prevElementStaff(int staff);
       virtual QString accessibleInfo() const override;
 
+      void addSystemHeader(bool firstSystem);
+      void addSystemTrailer(Measure* nm);
       void removeSystemHeader();
       void removeSystemTrailer();
 
+      const BarLine* endBarLine() const;
       BarLineType endBarLineType() const;
       bool endBarLineVisible() const;
-      Shape& shape(int staffIdx) { return mstaff(staffIdx)->shape(); }
       virtual void triggerLayout() const override;
+      qreal basicStretch() const;
+      qreal basicWidth() const;
+      virtual void computeMinWidth();
+      void checkHeader();
+      void checkTrailer();
+      void setStretchedWidth(qreal);
+      void layoutStaffLines();
       };
 
 }     // namespace Ms

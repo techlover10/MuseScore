@@ -18,6 +18,7 @@
 #include "libmscore/stem.h"
 #include "libmscore/hook.h"
 #include "libmscore/tuplet.h"
+#include "libmscore/staff.h"
 #include "inspector.h"
 #include "inspectorNote.h"
 
@@ -37,31 +38,42 @@ InspectorNote::InspectorNote(QWidget* parent)
       static const NoteHead::Group heads[] = {
             NoteHead::Group::HEAD_NORMAL,
             NoteHead::Group::HEAD_CROSS,
-            NoteHead::Group::HEAD_DIAMOND,
-            NoteHead::Group::HEAD_TRIANGLE,
-            NoteHead::Group::HEAD_SLASH,
+            NoteHead::Group::HEAD_PLUS,
             NoteHead::Group::HEAD_XCIRCLE,
+            NoteHead::Group::HEAD_WITHX,
+            NoteHead::Group::HEAD_TRIANGLE_UP,
+            NoteHead::Group::HEAD_TRIANGLE_DOWN,
+            NoteHead::Group::HEAD_SLASHED1,
+            NoteHead::Group::HEAD_SLASHED2,
+            NoteHead::Group::HEAD_DIAMOND,
+            NoteHead::Group::HEAD_DIAMOND_OLD,
+            NoteHead::Group::HEAD_CIRCLED,
+            NoteHead::Group::HEAD_CIRCLED_LARGE,
+            NoteHead::Group::HEAD_LARGE_ARROW,
+
+            NoteHead::Group::HEAD_SLASH,
+            NoteHead::Group::HEAD_BREVIS_ALT,
+
             NoteHead::Group::HEAD_DO,
             NoteHead::Group::HEAD_RE,
             NoteHead::Group::HEAD_MI,
             NoteHead::Group::HEAD_FA,
             NoteHead::Group::HEAD_SOL,
             NoteHead::Group::HEAD_LA,
-            NoteHead::Group::HEAD_TI,
-            NoteHead::Group::HEAD_BREVIS_ALT
+            NoteHead::Group::HEAD_TI
             };
 
       //
       // fix order of noteheads
       //
-      for (unsigned i = 0; i < sizeof(heads)/sizeof(*heads); ++i) {
-            n.noteHeadGroup->addItem(qApp->translate("noteheadnames", NoteHead::groupToGroupName(heads[i])));
-            n.noteHeadGroup->setItemData(i, QVariant(int(heads[i])));
-            }
+      for (auto head : heads)
+            n.noteHeadGroup->addItem(NoteHead::group2userName(head), int(head));
 
       // noteHeadType starts at -1: correct values and count one item more (HEAD_AUTO)
-      for (int i = 0; i <= int(NoteHead::Type::HEAD_TYPES); ++i)
-            n.noteHeadType->setItemData(i, i-1);
+      for (int i = 0; i <= int(NoteHead::Type::HEAD_TYPES); ++i) {
+            n.noteHeadType->addItem(NoteHead::type2userName(NoteHead::Type(i - 1)));
+            n.noteHeadType->setItemData(i, i - 1);
+            }
 
       const std::vector<InspectorItem> iiList = {
             { P_ID::SMALL,          0, 0, n.small,         n.resetSmall         },
@@ -84,72 +96,21 @@ InspectorNote::InspectorNote(QWidget* parent)
 
             { P_ID::LEADING_SPACE,  0, 2, s.leadingSpace,  s.resetLeadingSpace  },
             };
-      mapSignals(iiList);
+      const std::vector<InspectorPanel> ppList = {
+            { s.title, s.panel },
+            { c.title, c.panel },
+            { n.title, n.panel },
+            };
+      mapSignals(iiList, ppList);
 
-      //
-      // Select
-      //
-      QLabel* l = new QLabel;
-      l->setText(tr("Select"));
-      QFont font(l->font());
-      font.setBold(true);
-      l->setFont(font);
-      l->setAlignment(Qt::AlignHCenter);
-      _layout->addWidget(l);
-      QFrame* f = new QFrame;
-      f->setFrameStyle(QFrame::HLine | QFrame::Raised);
-      f->setLineWidth(2);
-      _layout->addWidget(f);
-
-      QHBoxLayout* hbox = new QHBoxLayout;
-      dot1 = new QToolButton(this);
-      dot1->setText(tr("Dot 1"));
-      dot1->setEnabled(false);
-      hbox->addWidget(dot1);
-      dot2 = new QToolButton(this);
-      dot2->setText(tr("Dot 2"));
-      dot2->setEnabled(false);
-      hbox->addWidget(dot2);
-      dot3 = new QToolButton(this);
-      dot3->setText(tr("Dot 3"));
-      dot3->setEnabled(false);
-      hbox->addWidget(dot3);
-      dot4 = new QToolButton(this);
-      dot4->setText(tr("Dot 4"));
-      dot4->setEnabled(false);
-      hbox->addWidget(dot4);
-      _layout->addLayout(hbox);
-
-      hbox = new QHBoxLayout;
-      hook = new QToolButton(this);
-      hook->setText(tr("Hook"));
-      hook->setEnabled(false);
-      hbox->addWidget(hook);
-      stem = new QToolButton(this);
-      stem->setText(tr("Stem"));
-      stem->setEnabled(false);
-      hbox->addWidget(stem);
-      beam = new QToolButton(this);
-      beam->setText(tr("Beam"));
-      beam->setEnabled(false);
-      hbox->addWidget(beam);
-      _layout->addLayout(hbox);
-
-      hbox = new QHBoxLayout;
-      tuplet = new QToolButton(this);
-      tuplet->setText(tr("Tuplet"));
-      tuplet->setEnabled(false);
-      hbox->addWidget(tuplet);
-      _layout->addLayout(hbox);
-
-      connect(dot1,     SIGNAL(clicked()),     SLOT(dot1Clicked()));
-      connect(dot2,     SIGNAL(clicked()),     SLOT(dot2Clicked()));
-      connect(dot3,     SIGNAL(clicked()),     SLOT(dot3Clicked()));
-      connect(dot4,     SIGNAL(clicked()),     SLOT(dot4Clicked()));
-      connect(hook,     SIGNAL(clicked()),     SLOT(hookClicked()));
-      connect(stem,     SIGNAL(clicked()),     SLOT(stemClicked()));
-      connect(beam,     SIGNAL(clicked()),     SLOT(beamClicked()));
-      connect(tuplet,   SIGNAL(clicked()),     SLOT(tupletClicked()));
+      connect(n.dot1,     SIGNAL(clicked()),     SLOT(dot1Clicked()));
+      connect(n.dot2,     SIGNAL(clicked()),     SLOT(dot2Clicked()));
+      connect(n.dot3,     SIGNAL(clicked()),     SLOT(dot3Clicked()));
+      connect(n.dot4,     SIGNAL(clicked()),     SLOT(dot4Clicked()));
+      connect(n.hook,     SIGNAL(clicked()),     SLOT(hookClicked()));
+      connect(n.stem,     SIGNAL(clicked()),     SLOT(stemClicked()));
+      connect(n.beam,     SIGNAL(clicked()),     SLOT(beamClicked()));
+      connect(n.tuplet,   SIGNAL(clicked()),     SLOT(tupletClicked()));
       }
 
 //---------------------------------------------------------
@@ -160,15 +121,16 @@ void InspectorNote::setElement()
       {
       Note* note = toNote(inspector->element());
 
-      int n = note->dots().size();
-      dot1->setEnabled(n > 0);
-      dot2->setEnabled(n > 1);
-      dot3->setEnabled(n > 2);
-      dot4->setEnabled(n > 3);
-      stem->setEnabled(note->chord()->stem());
-      hook->setEnabled(note->chord()->hook());
-      beam->setEnabled(note->chord()->beam());
-      tuplet->setEnabled(note->chord()->tuplet());
+      int i = note->dots().size();
+      n.dot1->setEnabled(i > 0);
+      n.dot2->setEnabled(i > 1);
+      n.dot3->setEnabled(i > 2);
+      n.dot4->setEnabled(i > 3);
+      n.stem->setEnabled(note->chord()->stem());
+      n.hook->setEnabled(note->chord()->hook());
+      n.beam->setEnabled(note->chord()->beam());
+      n.tuplet->setEnabled(note->chord()->tuplet());
+      n.noteHeadGroup->setEnabled(note->chord()->staff()->isPitchedStaff(note->tick()) && note->chord()->staff()->staffType(note->tick())->noteHeadScheme() == NoteHeadScheme::HEAD_NORMAL);
       InspectorElementBase::setElement();
       bool nograce = !note->chord()->isGrace();
       s.leadingSpace->setEnabled(nograce);

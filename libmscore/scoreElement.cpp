@@ -76,7 +76,7 @@ void ScoreElement::undoPushProperty(P_ID id)
 //   writeProperty
 //---------------------------------------------------------
 
-void ScoreElement::writeProperty(Xml& xml, P_ID id) const
+void ScoreElement::writeProperty(XmlWriter& xml, P_ID id) const
       {
       xml.tag(id, getProperty(id), propertyDefault(id));
       }
@@ -133,8 +133,8 @@ void ScoreElement::unlink()
 
 void ScoreElement::undoUnlink()
       {
-//      if (_links)
-//TODO-ws            _score->undo(new Unlink(this));
+      if (_links)
+            _score->undo(new Unlink(this));
       }
 
 //---------------------------------------------------------
@@ -183,6 +183,24 @@ void LinkedElements::setLid(Score* score, int id)
 MasterScore* ScoreElement::masterScore() const
       {
       return _score->masterScore();
+      }
+
+//---------------------------------------------------------
+//   propertyStyle
+//---------------------------------------------------------
+
+PropertyStyle ScoreElement::propertyStyle(P_ID) const
+      {
+      return PropertyStyle::NOSTYLE;
+      }
+
+//---------------------------------------------------------
+//   getPropertyStyle
+//---------------------------------------------------------
+
+StyleIdx ScoreElement::getPropertyStyle(P_ID) const
+      {
+      return StyleIdx::NOSTYLE;
       }
 }
 

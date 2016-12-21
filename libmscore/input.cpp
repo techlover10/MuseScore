@@ -42,7 +42,7 @@ StaffGroup InputState::staffGroup() const
       {
       if (_segment == 0 || _track == -1)
             return StaffGroup::STANDARD;
-      return _segment->score()->staff(_track/VOICES)->staffType()->group();
+      return _segment->score()->staff(_track/VOICES)->staffType(_segment->tick())->group();
       }
 
 //---------------------------------------------------------
@@ -116,7 +116,7 @@ void InputState::moveInputPos(Element* e)
             return;
 
       Segment* s;
-      if (e->isChordRest1())
+      if (e->isChordRest())
             s = toChordRest(e)->segment();
       else
             s = toSegment(e);

@@ -25,7 +25,6 @@
 #include "undo.h"
 #include "staff.h"
 #include "harmony.h"
-#include "lyrics.h"
 #include "segment.h"
 #include "stafftype.h"
 #include "icon.h"
@@ -69,11 +68,6 @@ Rest::Rest(const Rest& r, bool link)
       _mmWidth = r._mmWidth;
       }
 
-Rest::~Rest()
-      {
-      qDeleteAll(_el);
-      }
-
 //---------------------------------------------------------
 //   Rest::draw
 //---------------------------------------------------------
@@ -81,9 +75,9 @@ Rest::~Rest()
 void Rest::draw(QPainter* painter) const
       {
       if (
-         (staff() && staff()->isTabStaff()
+         (staff() && staff()->isTabStaff(tick())
          // in tab staff, do not draw rests is rests are off OR if dur. symbols are on
-         && (!staff()->staffType()->showRests() || staff()->staffType()->genDurations())
+         && (!staff()->staffType(tick())->showRests() || staff()->staffType(tick())->genDurations())
          && (!measure() || !measure()->isMMRest()))        // show multi measure rest always
          || generated()
             )
@@ -92,13 +86,13 @@ void Rest::draw(QPainter* painter) const
 
       painter->setPen(curColor());
 
-      if (parent() && measure() && measure()->isMMRest()) {
+      if (measure() && measure()->isMMRest()) {
             //only on voice 1
-            if ((track() % VOICES) != 0)
+            if (track() % VOICES)
                   return;
             Measure* m = measure();
             int n      = m->mmRestCount();
-            qreal pw = _spatium * .7;
+            qreal pw   = _spatium * .7;
             QPen pen(painter->pen());
             pen.setWidthF(pw);
             painter->setPen(pen);
@@ -232,9 +226,8 @@ Element* Rest::drop(const DropData& data)
       switch (e->type()) {
             case Element::Type::ARTICULATION:
                   {
-                  Articulation* a = static_cast<Articulation*>(e);
-                  if (!a->isFermata()
-                     || !score()->addArticulation(this, a)) {
+                  Articulation* a = toArticulation(e);
+                  if (!a->isFermata() || !score()->addArticulation(this, a)) {
                         delete e;
                         e = 0;
                         }
@@ -334,7 +327,7 @@ void Rest::layout()
       {
       if (_gap)
             return;
-      for (Element* e : _el)
+      for (Element* e : el())
             e->layout();
       if (measure() && measure()->isMMRest()) {
             static const qreal verticalLineWidth = .2;
@@ -350,8 +343,8 @@ void Rest::layout()
             }
 
       rxpos() = 0.0;
-      if (staff() && staff()->isTabStaff()) {
-            StaffType* tab = staff()->staffType();
+      if (staff() && staff()->isTabStaff(tick())) {
+            StaffType* tab = staff()->staffType(tick());
             // if rests are shown and note values are shown as duration symbols
             if (tab->showRests() && tab->genDurations()) {
                   TDuration::DurationType type = durationType().type();
@@ -373,8 +366,6 @@ void Rest::layout()
                   _tabDur->layout();
                   setbbox(_tabDur->bbox());
                   setPos(0.0, 0.0);             // no rest is drawn: reset any position might be set for it
-//                  _space.setLw(0.0);
-//                  _space.setRw(width());
                   return;
                   }
             // if no rests or no duration symbols, delete any dur. symbol and chain into standard staff mngmt
@@ -388,33 +379,19 @@ void Rest::layout()
 
       dotline = Rest::getDotline(durationType().type());
 
-      // DEBUG: no longer needed now that computeLineOffset returns an appropriate value?
-      //int stepOffset = 0;
-      //if (staff())
-      //      stepOffset = staff()->staffType()->stepOffset();
       qreal _spatium = spatium();
       qreal yOff     = userOff().y();
-      Staff* st      = staff();
-      qreal lineDist = st ? st->staffType()->lineDistance().val() : 1.0;
+      Staff* stf     = staff();
+      StaffType*  st = stf->staffType(tick());
+      qreal lineDist = st ? st->lineDistance().val() : 1.0;
       int userLine   = yOff == 0.0 ? 0 : lrint(yOff / (lineDist * _spatium));
-
-      int lines = staff() ? staff()->lines() : 5;
-      int lineOffset = computeLineOffset();
+      int lines      = st ? st->lines() : 5;
+      int lineOffset = computeLineOffset(lines);
 
       int yo;
       _sym = getSymbol(durationType().type(), lineOffset / 2 + userLine, lines, &yo);
       layoutArticulations();
-      rypos() = (qreal(yo) + qreal(lineOffset/* + stepOffset*/) * .5) * lineDist * _spatium;
-
-      Spatium rs;
-      if (dots()) {
-            rs = Spatium(score()->styleS(StyleIdx::dotNoteDistance)
-               + dots() * score()->styleS(StyleIdx::dotDotDistance));
-            }
-      if (dots()) {
-            rs = Spatium(score()->styleS(StyleIdx::dotNoteDistance)
-               + dots() * score()->styleS(StyleIdx::dotDotDistance));
-            }
+      rypos() = (qreal(yo) + qreal(lineOffset) * .5) * lineDist * _spatium;
       setbbox(symBbox(_sym));
       }
 
@@ -444,13 +421,13 @@ int Rest::getDotline(TDuration::DurationType durationType)
       }
 
 //---------------------------------------------------------
-//   centerX
+//   computeLineOffset
 //---------------------------------------------------------
 
-int Rest::computeLineOffset()
+int Rest::computeLineOffset(int lines)
       {
       Segment* s = segment();
-      bool offsetVoices = s && measure() && measure()->mstaff(staffIdx())->hasVoices;
+      bool offsetVoices = s && measure() && measure()->hasVoices(staffIdx());
       if (offsetVoices && voice() == 0) {
             // do not offset voice 1 rest if there exists a matching invisible rest in voice 2;
             Element* e = s->element(track() + 1);
@@ -499,11 +476,10 @@ int Rest::computeLineOffset()
             }
 #endif
 
-      int lineOffset = 0;
-      int lines = staff() ? staff()->lines() : 5;
+      int lineOffset    = 0;
       int assumedCenter = 4;
-      int actualCenter = (lines - 1);
-      int centerDiff = actualCenter - assumedCenter;
+      int actualCenter  = (lines - 1);
+      int centerDiff    = actualCenter - assumedCenter;
 
       if (offsetVoices) {
             // move rests in a multi voice context
@@ -559,7 +535,7 @@ int Rest::computeLineOffset()
                   lineOffset += centerDiff;
                   if (centerDiff & 1) {
                         // round to line
-                        if (lines == 2 && staff() && staff()->lineDistance() < 2.0)
+                        if (lines == 2 && staff() && staff()->lineDistance(tick()) < 2.0)
                               ;                                         // leave alone
                         else if (lines <= 6)
                               lineOffset += lineOffset > 0 ? -1 : 1;    // round inward
@@ -635,7 +611,7 @@ qreal Rest::downPos() const
 void Rest::scanElements(void* data, void (*func)(void*, Element*), bool all)
       {
       ChordRest::scanElements(data, func, all);
-      for (Element* e : _el)
+      for (Element* e : el())
             e->scanElements(data, func, all);
       if (!isGap())
             func(data, this);
@@ -792,7 +768,7 @@ void Rest::add(Element* e)
       switch(e->type()) {
             case Element::Type::SYMBOL:
             case Element::Type::IMAGE:
-                  _el.push_back(e);
+                  el().push_back(e);
                   break;
             default:
                   ChordRest::add(e);
@@ -809,7 +785,7 @@ void Rest::remove(Element* e)
       switch(e->type()) {
             case Element::Type::SYMBOL:
             case Element::Type::IMAGE:
-                  if (!_el.remove(e))
+                  if (!el().remove(e))
                         qDebug("Rest::remove(): cannot find %s", e->name());
                   break;
             default:
@@ -822,13 +798,13 @@ void Rest::remove(Element* e)
 //   Rest::write
 //---------------------------------------------------------
 
-void Rest::write(Xml& xml) const
+void Rest::write(XmlWriter& xml) const
       {
       if (_gap)
             return;
       xml.stag(name());
       ChordRest::writeProperties(xml);
-      _el.write(xml);
+      el().write(xml);
       xml.etag();
       }
 

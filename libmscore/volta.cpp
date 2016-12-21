@@ -15,6 +15,7 @@
 #include "xml.h"
 #include "score.h"
 #include "text.h"
+#include "system.h"
 
 namespace Ms {
 
@@ -24,11 +25,21 @@ namespace Ms {
 
 void VoltaSegment::layout()
       {
-      rypos() = 0.0;
-      TextLineSegment::layout1();
-      if (parent())     // for palette
-            rypos() += score()->styleP(StyleIdx::voltaY) * mag();
-      adjustReadPos();
+      if (autoplace())
+            setUserOff(QPointF());
+      TextLineBaseSegment::layout();
+      if (!parent())
+            return;
+      rypos() = score()->styleP(StyleIdx::voltaY) * mag();
+      if (autoplace()) {
+            qreal minDistance = spatium() * .7;
+            Shape s1 = shape().translated(pos());
+            qreal d  = system()->topDistance(staffIdx(), s1);
+            if (d > -minDistance)
+                  rUserYoffset() = -d - minDistance;
+            }
+      else
+            adjustReadPos();
       }
 
 //---------------------------------------------------------
@@ -44,7 +55,7 @@ QVariant VoltaSegment::getProperty(P_ID id) const
             case P_ID::VOLTA_TYPE:
                   return volta()->getProperty(id);
             default:
-                  return TextLineSegment::getProperty(id);
+                  return TextLineBaseSegment::getProperty(id);
             }
       }
 
@@ -61,7 +72,7 @@ bool VoltaSegment::setProperty(P_ID id, const QVariant& v)
             case P_ID::VOLTA_TYPE:
                   return volta()->setProperty(id, v);
             default:
-                  return TextLineSegment::setProperty(id, v);
+                  return TextLineBaseSegment::setProperty(id, v);
             }
       }
 
@@ -84,7 +95,7 @@ QVariant VoltaSegment::propertyDefault(P_ID id) const
             case P_ID::VOLTA_ENDING:
                   return volta()->propertyDefault(id);
             default:
-                  return TextLineSegment::propertyDefault(id);
+                  return TextLineBaseSegment::propertyDefault(id);
             }
       }
 
@@ -102,7 +113,7 @@ PropertyStyle VoltaSegment::propertyStyle(P_ID id) const
                   return volta()->propertyStyle(id);
 
             default:
-                  return TextLineSegment::propertyStyle(id);
+                  return TextLineBaseSegment::propertyStyle(id);
             }
       }
 
@@ -121,7 +132,7 @@ void VoltaSegment::resetProperty(P_ID id)
                   return volta()->resetProperty(id);
 
             default:
-                  return TextLineSegment::resetProperty(id);
+                  return TextLineBaseSegment::resetProperty(id);
             }
       }
 
@@ -139,7 +150,7 @@ void VoltaSegment::styleChanged()
 //---------------------------------------------------------
 
 Volta::Volta(Score* s)
-   : TextLine(s)
+   : TextLineBase(s)
       {
       setBeginText("1.", TextStyleType::VOLTA);
 
@@ -147,14 +158,12 @@ Volta::Volta(Score* s)
       setContinueTextPlace(PlaceText::BELOW);
 
       setBeginHook(true);
-      Spatium hook(s->styleS(StyleIdx::voltaHook));
-      setBeginHookHeight(hook);
-      setEndHookHeight(hook);
       setAnchor(Anchor::MEASURE);
 
-      setLineWidth(score()->styleS(StyleIdx::voltaLineWidth));
-      lineWidthStyle = PropertyStyle::STYLED;
-      lineStyleStyle = PropertyStyle::STYLED;
+      resetProperty(P_ID::BEGIN_HOOK_HEIGHT);
+      resetProperty(P_ID::END_HOOK_HEIGHT);
+      resetProperty(P_ID::LINE_WIDTH);
+      resetProperty(P_ID::LINE_STYLE);
       }
 
 //---------------------------------------------------------
@@ -220,7 +229,7 @@ void Volta::read(XmlReader& e)
                   QString s = e.readElementText();
                   QStringList sl = s.split(",", QString::SkipEmptyParts);
                   _endings.clear();
-                  foreach(const QString& l, sl) {
+                  for (const QString& l : sl) {
                         int i = l.simplified().toInt();
                         _endings.append(i);
                         }
@@ -234,7 +243,7 @@ void Volta::read(XmlReader& e)
                   if (st == 1)
                         setEndHook(true);
                   }
-            else if (!TextLine::readProperties(e))
+            else if (!TextLineBase::readProperties(e))
                   e.unknown();
             }
       }
@@ -243,12 +252,12 @@ void Volta::read(XmlReader& e)
 //   write
 //---------------------------------------------------------
 
-void Volta::write(Xml& xml) const
+void Volta::write(XmlWriter& xml) const
       {
       xml.stag(QString("%1 id=\"%2\"").arg(name()).arg(xml.spannerId(this)));
-      TextLine::writeProperties(xml);
+      TextLineBase::writeProperties(xml);
       QString s;
-      foreach(int i, _endings) {
+      for (int i : _endings) {
             if (!s.isEmpty())
                   s += ", ";
             s += QString("%1").arg(i);
@@ -272,7 +281,7 @@ LineSegment* Volta::createLineSegment()
 
 bool Volta::hasEnding(int repeat) const
       {
-      foreach (int ending, endings()) {
+      for (int ending : endings()) {
             if (ending == repeat)
                   return true;
             }
@@ -293,7 +302,7 @@ QVariant Volta::getProperty(P_ID propertyId) const
             default:
                   break;
             }
-      return TextLine::getProperty(propertyId);
+      return TextLineBase::getProperty(propertyId);
       }
 
 //---------------------------------------------------------
@@ -318,7 +327,7 @@ bool Volta::setProperty(P_ID propertyId, const QVariant& val)
                   setLineStyle(Qt::PenStyle(val.toInt()));
                   break;
             default:
-                  if (!TextLine::setProperty(propertyId, val))
+                  if (!TextLineBase::setProperty(propertyId, val))
                         return false;
                   break;
             }
@@ -363,7 +372,7 @@ QVariant Volta::propertyDefault(P_ID propertyId) const
                   return int(TextStyleType::VOLTA);
 
             default:
-                  return TextLine::propertyDefault(propertyId);
+                  return TextLineBase::propertyDefault(propertyId);
             }
       return QVariant();
       }
@@ -391,7 +400,7 @@ PropertyStyle Volta::propertyStyle(P_ID id) const
                   return lineWidthStyle;
 
             default:
-                  return TextLine::propertyStyle(id);
+                  return TextLineBase::propertyStyle(id);
             }
       }
 
@@ -417,7 +426,7 @@ void Volta::resetProperty(P_ID id)
                   break;
 
             default:
-                  return TextLine::resetProperty(id);
+                  return TextLineBase::resetProperty(id);
             }
       }
 
@@ -442,7 +451,7 @@ void Volta::reset()
       {
       if (lineWidthStyle == PropertyStyle::UNSTYLED)
             undoChangeProperty(P_ID::LINE_WIDTH, propertyDefault(P_ID::LINE_WIDTH), PropertyStyle::STYLED);
-      TextLine::reset();
+      TextLineBase::reset();
       }
 
 //---------------------------------------------------------
@@ -452,6 +461,23 @@ void Volta::reset()
 QString Volta::accessibleInfo() const
       {
       return QString("%1: %2").arg(Element::accessibleInfo()).arg(text());
+      }
+
+//---------------------------------------------------------
+//   getPropertyStyle
+//---------------------------------------------------------
+
+StyleIdx Volta::getPropertyStyle(P_ID id) const
+      {
+      switch (id) {
+            case P_ID::LINE_WIDTH:
+                  return StyleIdx::voltaLineWidth;
+            case P_ID::LINE_STYLE:
+                  return StyleIdx::voltaLineStyle;
+            default:
+                  break;
+            }
+      return StyleIdx::NOSTYLE;
       }
 
 }

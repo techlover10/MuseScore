@@ -42,6 +42,7 @@ PluginCreator::PluginCreator(QWidget* parent)
       manualDock  = 0;
       helpBrowser = 0;
 
+      setObjectName("PluginCreator");
       setIconSize(QSize(preferences.iconWidth * guiScaling, preferences.iconHeight * guiScaling));
 
       setupUi(this);
@@ -74,10 +75,16 @@ PluginCreator::PluginCreator(QWidget* parent)
       editTools->setObjectName("EditOperations");
       actionUndo->setIcon(*icons[int(Icons::undo_ICON)]);
       actionUndo->setShortcut(QKeySequence(QKeySequence::Undo));
-      editTools->addAction(actionUndo);
       actionRedo->setIcon(*icons[int(Icons::redo_ICON)]);
       actionRedo->setShortcut(QKeySequence(QKeySequence::Redo));
-      editTools->addAction(actionRedo);
+      if (qApp->layoutDirection() == Qt::LayoutDirection::LeftToRight) {
+            editTools->addAction(actionUndo);
+            editTools->addAction(actionRedo);
+            }
+      else {
+            editTools->addAction(actionUndo);
+            editTools->addAction(actionRedo);
+            }
       actionUndo->setEnabled(false);
       actionRedo->setEnabled(false);
 
@@ -197,11 +204,12 @@ void PluginCreator::setTitle(const QString& s)
 void PluginCreator::writeSettings()
       {
       QSettings settings;
-      settings.beginGroup("PluginCreator");
-      settings.setValue("geometry", saveGeometry());
+      settings.beginGroup(objectName());
       settings.setValue("windowState", saveState());
       settings.setValue("splitter", splitter->saveState());
       settings.endGroup();
+
+      MuseScore::saveGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -212,12 +220,13 @@ void PluginCreator::readSettings()
       {
       if (!useFactorySettings) {
             QSettings settings;
-            settings.beginGroup("PluginCreator");
+            settings.beginGroup(objectName());
             splitter->restoreState(settings.value("splitter").toByteArray());
-            restoreGeometry(settings.value("geometry").toByteArray());
             restoreState(settings.value("windowState").toByteArray());
             settings.endGroup();
             }
+
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------

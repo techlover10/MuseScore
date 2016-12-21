@@ -58,8 +58,6 @@ void SystemDivider::layout()
                   sid = Sym::name2id(score()->styleSt(StyleIdx::dividerRightSym));
                   break;
             }
-      if (!symIsValid(sid))
-            sf = sf->fallbackFont();
       setSym(sid, sf);
       Symbol::layout();
       }
@@ -97,7 +95,7 @@ QRectF SystemDivider::drag(EditData* ed)
 //   write
 //---------------------------------------------------------
 
-void SystemDivider::write(Xml& xml) const
+void SystemDivider::write(XmlWriter& xml) const
       {
       if (dividerType() == SystemDivider::Type::LEFT)
             xml.stag(QString("SystemDivider type=\"left\""));
@@ -118,22 +116,18 @@ void SystemDivider::read(XmlReader& e)
       if (e.attribute("type") == "left") {
             _dividerType = SystemDivider::Type::LEFT;
             SymId sym = Sym::name2id(score()->styleSt(StyleIdx::dividerLeftSym));
-            if (!symIsValid(sym))
-                  sf = sf->fallbackFont();
             setSym(sym, sf);
             setAlign(a | AlignmentFlags::LEFT);
-            setXoff(score()->styleB(StyleIdx::dividerLeftX));
-            setYoff(score()->styleB(StyleIdx::dividerLeftY));
+            setXoff(score()->styleD(StyleIdx::dividerLeftX));
+            setYoff(score()->styleD(StyleIdx::dividerLeftY));
             }
       else {
             _dividerType = SystemDivider::Type::RIGHT;
             SymId sym = Sym::name2id(score()->styleSt(StyleIdx::dividerRightSym));
-            if (!symIsValid(sym))
-                  sf = sf->fallbackFont();
             setSym(sym, sf);
             setAlign(a | AlignmentFlags::RIGHT);
-            setXoff(score()->styleB(StyleIdx::dividerRightX));
-            setYoff(score()->styleB(StyleIdx::dividerRightY));
+            setXoff(score()->styleD(StyleIdx::dividerRightX));
+            setYoff(score()->styleD(StyleIdx::dividerRightY));
             }
       Symbol::read(e);
       }

@@ -98,15 +98,6 @@ Dynamic::Dynamic(const Dynamic& d)
       }
 
 //---------------------------------------------------------
-//   setVelocity
-//---------------------------------------------------------
-
-void Dynamic::setVelocity(int v)
-      {
-      _velocity = v;
-      }
-
-//---------------------------------------------------------
 //   velocity
 //---------------------------------------------------------
 
@@ -119,7 +110,7 @@ int Dynamic::velocity() const
 //   write
 //---------------------------------------------------------
 
-void Dynamic::write(Xml& xml) const
+void Dynamic::write(XmlWriter& xml) const
       {
       if (!xml.canWrite(this))
             return;
@@ -162,8 +153,12 @@ void Dynamic::layout()
             setUserOff(QPointF());
 
       QPointF p(textStyle().offset(spatium()));
-      if (placement() == Element::Placement::ABOVE)
-            p.ry() = staff()->height() - p.ry();
+      if (placeAbove())
+            p.ry() += score()->styleP(StyleIdx::dynamicsPosAbove);
+      else {
+            qreal sh = staff() ? staff()->height() : 0;
+            p.ry() += score()->styleP(StyleIdx::dynamicsPosBelow) + sh + lineSpacing();
+            }
       setPos(p);
       Text::layout1();
 
@@ -172,7 +167,9 @@ void Dynamic::layout()
             int t = track() & ~0x3;
             for (int voice = 0; voice < VOICES; ++voice) {
                   Element* e = s->element(t + voice);
-                  if (e && e->isChord()) {
+                  if (!e)
+                        continue;
+                  if (e->isChord()) {
                         Chord* c = toChord(e);
                         qreal noteHeadWidth = score()->noteHeadWidth() * c->mag();
                         if (c->stem() && !c->up())  // stem down
@@ -184,22 +181,37 @@ void Dynamic::layout()
                         rxpos() += e->width() * .5;
                   break;
                   }
-            if (autoplace()) {
-                  qreal minDistance = spatium();
-                  Shape s1 = s->staffShape(staffIdx()).translated(s->pos());
-                  Shape s2 = shape().translated(s->pos());
+            }
+      else
+            setPos(QPointF());      // for palette
+      adjustReadPos();
+      }
 
-                  if (placement() == Element::Placement::ABOVE) {
-                        qreal d = s2.minVerticalDistance(s1);
-                        if (d > -minDistance)
-                              setUserOff(QPointF(0.0, -d - minDistance));
-                        }
-                  else {
-                        qreal d = s1.minVerticalDistance(s2);
-                        if (d > -minDistance)
-                              setUserOff(QPointF(0.0, d + minDistance));
-                        }
-                  }
+//-------------------------------------------------------------------
+//   doAutoplace
+//
+//    Move Dynamic up or down to avoid collisions with other elements.
+//-------------------------------------------------------------------
+
+void Dynamic::doAutoplace()
+      {
+      Segment* s = segment();
+      if (!(s && autoplace()))
+            return;
+
+      qreal minDistance = score()->styleP(StyleIdx::dynamicsMinDistance);
+      Shape s1          = s->staffShape(staffIdx()).translated(s->pos());
+      Shape s2          = shape().translated(s->pos());
+
+      if (placeAbove()) {
+            qreal d = s2.minVerticalDistance(s1);
+            if (d > -minDistance)
+                  rUserYoffset() = -d - minDistance;
+            }
+      else {
+            qreal d = s1.minVerticalDistance(s2);
+            if (d > -minDistance)
+                  rUserYoffset() = d + minDistance;
             }
       }
 
@@ -273,11 +285,10 @@ QRectF Dynamic::drag(EditData* ed)
       //
       Qt::KeyboardModifiers km = qApp->keyboardModifiers();
       if (km != (Qt::ShiftModifier | Qt::ControlModifier)) {
-            int si;
-            Segment* seg = 0;
-            if (score()->pos2measure(ed->pos, &si, 0, &seg, 0) == nullptr)
-                  return f;
-            if (seg && (seg != segment() || staffIdx() != si)) {
+            int si       = staffIdx();
+            Segment* seg = segment();
+            score()->dragPosition(ed->pos, &si, &seg);
+            if (seg != segment() || staffIdx() != si) {
                   QPointF pos1(canvasPos());
                   score()->undo(new ChangeParent(this, seg, si));
                   setUserOff(QPointF());
@@ -296,7 +307,7 @@ QRectF Dynamic::drag(EditData* ed)
 
 void Dynamic::undoSetDynRange(Range v)
       {
-      score()->undoChangeProperty(this, P_ID::DYNAMIC_RANGE, int(v));
+      undoChangeProperty(P_ID::DYNAMIC_RANGE, int(v));
       }
 
 //---------------------------------------------------------
@@ -305,7 +316,7 @@ void Dynamic::undoSetDynRange(Range v)
 
 QVariant Dynamic::getProperty(P_ID propertyId) const
       {
-      switch(propertyId) {
+      switch (propertyId) {
             case P_ID::DYNAMIC_RANGE:     return int(_dynRange);
             case P_ID::VELOCITY:          return velocity();
             case P_ID::SUBTYPE:           return int(_dynamicType);

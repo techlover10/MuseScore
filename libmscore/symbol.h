@@ -15,8 +15,6 @@
 
 #include "bsymbol.h"
 
-class QPainter;
-
 namespace Ms {
 
 class Segment;
@@ -26,10 +24,13 @@ enum class SymId;
 //---------------------------------------------------------
 //   @@ Symbol
 ///    Symbol constructed from builtin symbol.
+//
+//   @P symbol       string       the SMuFL name of the symbol
 //---------------------------------------------------------
 
 class Symbol : public BSymbol {
       Q_OBJECT
+      Q_PROPERTY(QString symbol        READ symName)
 
    protected:
       SymId _sym;
@@ -46,9 +47,10 @@ class Symbol : public BSymbol {
 
       void setSym(SymId s, const ScoreFont* sf = nullptr) { _sym  = s; _scoreFont = sf;    }
       SymId sym() const                  { return _sym;  }
+      QString symName() const;
 
       virtual void draw(QPainter*) const override;
-      virtual void write(Xml& xml) const override;
+      virtual void write(XmlWriter& xml) const override;
       virtual void read(XmlReader&) override;
       virtual void layout() override;
       void setAbove(bool);
@@ -76,7 +78,7 @@ class FSymbol : public BSymbol {
       virtual Element::Type type() const  { return Element::Type::FSYMBOL; }
 
       virtual void draw(QPainter*) const;
-      virtual void write(Xml& xml) const;
+      virtual void write(XmlWriter& xml) const;
       virtual void read(XmlReader&);
       virtual void layout();
 

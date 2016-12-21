@@ -29,12 +29,12 @@ Instrument InstrumentList::defaultInstrument;
 //   write
 //---------------------------------------------------------
 
-void NamedEventList::write(Xml& xml, const QString& n) const
+void NamedEventList::write(XmlWriter& xml, const QString& n) const
       {
       xml.stag(QString("%1 name=\"%2\"").arg(n).arg(name));
       if (!descr.isEmpty())
             xml.tag("descr", descr);
-      foreach(const MidiCoreEvent& e, events)
+      for (const MidiCoreEvent& e : events)
             e.write(xml);
       xml.etag();
       }
@@ -159,7 +159,7 @@ Instrument::~Instrument()
 //   StaffName::write
 //---------------------------------------------------------
 
-void StaffName::write(Xml& xml, const char* tag) const
+void StaffName::write(XmlWriter& xml, const char* tag) const
       {
       if (!name().isEmpty()) {
             if (pos() == 0)
@@ -187,7 +187,7 @@ void StaffName::read(XmlReader& e)
 //   Instrument::write
 //---------------------------------------------------------
 
-void Instrument::write(Xml& xml, Part* part) const
+void Instrument::write(XmlWriter& xml, Part* part) const
       {
       xml.stag("Instrument");
       _longNames.write(xml, "longName");
@@ -254,138 +254,119 @@ void Instrument::write(Xml& xml, Part* part) const
 
 void Instrument::read(XmlReader& e, Part* part)
       {
-      int program = -1;
-      int bank    = 0;
-      int chorus  = 30;
-      int reverb  = 30;
-      int volume  = 100;
-      int pan     = 60;
       bool customDrumset = false;
 
       _channel.clear();       // remove default channel
       while (e.readNextStartElement()) {
-            const QStringRef& tag(e.name());
-
-            if (tag == "longName") {
-                  StaffName name;
-                  name.read(e);
-                  _longNames.append(name);
-                  }
-            else if (tag == "shortName") {
-                  StaffName name;
-                  name.read(e);
-                  _shortNames.append(name);
-                  }
-            else if (tag == "trackName")
-                  _trackName = e.readElementText();
-            else if (tag == "minPitch") {      // obsolete
-                  _minPitchP = _minPitchA = e.readInt();
-                  }
-            else if (tag == "maxPitch") {       // obsolete
-                  _maxPitchP = _maxPitchA = e.readInt();
-                  }
-            else if (tag == "minPitchA")
-                  _minPitchA = e.readInt();
-            else if (tag == "minPitchP")
-                  _minPitchP = e.readInt();
-            else if (tag == "maxPitchA")
-                  _maxPitchA = e.readInt();
-            else if (tag == "maxPitchP")
-                  _maxPitchP = e.readInt();
-            else if (tag == "transposition") {    // obsolete
-                  _transpose.chromatic = e.readInt();
-                  _transpose.diatonic = chromatic2diatonic(_transpose.chromatic);
-                  }
-            else if (tag == "transposeChromatic")
-                  _transpose.chromatic = e.readInt();
-            else if (tag == "transposeDiatonic")
-                  _transpose.diatonic = e.readInt();
-            else if (tag == "instrumentId")
-                  _instrumentId = e.readElementText();
-            else if (tag == "useDrumset") {
-                  _useDrumset = e.readInt();
-                  if (_useDrumset) {
-                        delete _drumset;
-                        _drumset = new Drumset(*smDrumset);
-                        }
-                  }
-            else if (tag == "Drum") {
-                  // if we see on of this tags, a custom drumset will
-                  // be created
-                  if (!_drumset)
-                        _drumset = new Drumset(*smDrumset);
-                  if (!customDrumset) {
-                        const_cast<Drumset*>(_drumset)->clear();
-                        customDrumset = true;
-                        }
-                  const_cast<Drumset*>(_drumset)->load(e);
-                  }
-            // support tag "Tablature" for a while for compatibility with existent 2.0 scores
-            else if (tag == "Tablature" || tag == "StringData")
-                  _stringData.read(e);
-            else if (tag == "MidiAction") {
-                  NamedEventList a;
-                  a.read(e);
-                  _midiActions.append(a);
-                  }
-            else if (tag == "Articulation") {
-                  MidiArticulation a;
-                  a.read(e);
-                  _articulation.append(a);
-                  }
-            else if (tag == "Channel" || tag == "channel") {
-                  Channel* a = new Channel;
-                  a->read(e, part);
-                  _channel.append(a);
-                  }
-            else if (tag == "clef") {           // sets both transposing and concert clef
-                  int idx = e.intAttribute("staff", 1) - 1;
-                  QString val(e.readElementText());
-                  ClefType ct = Clef::clefType(val);
-                  setClefType(idx, ClefTypeList(ct, ct));
-                  }
-            else if (tag == "concertClef") {
-                  int idx = e.intAttribute("staff", 1) - 1;
-                  QString val(e.readElementText());
-                  setClefType(idx, ClefTypeList(Clef::clefType(val), clefType(idx)._transposingClef));
-                  }
-            else if (tag == "transposingClef") {
-                  int idx = e.intAttribute("staff", 1) - 1;
-                  QString val(e.readElementText());
-                  setClefType(idx, ClefTypeList(clefType(idx)._concertClef, Clef::clefType(val)));
-                  }
-
-            else if (tag == "chorus")           // obsolete
-                  chorus = e.readInt();
-            else if (tag == "reverb")           // obsolete
-                  reverb = e.readInt();
-            else if (tag == "midiProgram")      // obsolete
-                  program = e.readInt();
-            else if (tag == "volume")           // obsolete
-                  volume = e.readInt();
-            else if (tag == "pan")              // obsolete
-                  pan = e.readInt();
-            else if (tag == "midiChannel")      // obsolete
-                  e.skipCurrentElement();
-            else
+            if (!readProperties(e, part, &customDrumset))
                   e.unknown();
-            }
-      if (_channel.empty()) {      // for backward compatibility
-            Channel* a = new Channel;
-            a->chorus  = chorus;
-            a->reverb  = reverb;
-            a->name    = "normal";
-            a->program = program;
-            a->bank    = bank;
-            a->volume  = volume;
-            a->pan     = pan;
-            _channel.append(a);
             }
       if (_useDrumset) {
             if (_channel[0]->bank == 0)
                   _channel[0]->bank = 128;
             _channel[0]->updateInitList();
             }
+      }
+
+//---------------------------------------------------------
+//   Instrument::readProperties
+//---------------------------------------------------------
+
+bool Instrument::readProperties(XmlReader& e, Part* part, bool* customDrumset)
+      {
+      const QStringRef& tag(e.name());
+      if (tag == "longName") {
+            StaffName name;
+            name.read(e);
+            _longNames.append(name);
+            }
+      else if (tag == "shortName") {
+            StaffName name;
+            name.read(e);
+            _shortNames.append(name);
+            }
+      else if (tag == "trackName")
+            _trackName = e.readElementText();
+      else if (tag == "minPitch") {      // obsolete
+            _minPitchP = _minPitchA = e.readInt();
+            }
+      else if (tag == "maxPitch") {       // obsolete
+            _maxPitchP = _maxPitchA = e.readInt();
+            }
+      else if (tag == "minPitchA")
+            _minPitchA = e.readInt();
+      else if (tag == "minPitchP")
+            _minPitchP = e.readInt();
+      else if (tag == "maxPitchA")
+            _maxPitchA = e.readInt();
+      else if (tag == "maxPitchP")
+            _maxPitchP = e.readInt();
+      else if (tag == "transposition") {    // obsolete
+            _transpose.chromatic = e.readInt();
+            _transpose.diatonic = chromatic2diatonic(_transpose.chromatic);
+            }
+      else if (tag == "transposeChromatic")
+            _transpose.chromatic = e.readInt();
+      else if (tag == "transposeDiatonic")
+            _transpose.diatonic = e.readInt();
+      else if (tag == "instrumentId")
+            _instrumentId = e.readElementText();
+      else if (tag == "useDrumset") {
+            _useDrumset = e.readInt();
+            if (_useDrumset) {
+                  delete _drumset;
+                  _drumset = new Drumset(*smDrumset);
+                  }
+            }
+      else if (tag == "Drum") {
+            // if we see on of this tags, a custom drumset will
+            // be created
+            if (!_drumset)
+                  _drumset = new Drumset(*smDrumset);
+            if (!customDrumset) {
+                  const_cast<Drumset*>(_drumset)->clear();
+                  *customDrumset = true;
+                  }
+            const_cast<Drumset*>(_drumset)->load(e);
+            }
+      // support tag "Tablature" for a while for compatibility with existent 2.0 scores
+      else if (tag == "Tablature" || tag == "StringData")
+            _stringData.read(e);
+      else if (tag == "MidiAction") {
+            NamedEventList a;
+            a.read(e);
+            _midiActions.append(a);
+            }
+      else if (tag == "Articulation") {
+            MidiArticulation a;
+            a.read(e);
+            _articulation.append(a);
+            }
+      else if (tag == "Channel" || tag == "channel") {
+            Channel* a = new Channel;
+            a->read(e, part);
+            _channel.append(a);
+            }
+      else if (tag == "clef") {           // sets both transposing and concert clef
+            int idx = e.intAttribute("staff", 1) - 1;
+            QString val(e.readElementText());
+            ClefType ct = Clef::clefType(val);
+            setClefType(idx, ClefTypeList(ct, ct));
+            }
+      else if (tag == "concertClef") {
+            int idx = e.intAttribute("staff", 1) - 1;
+            QString val(e.readElementText());
+            setClefType(idx, ClefTypeList(Clef::clefType(val), clefType(idx)._transposingClef));
+            }
+      else if (tag == "transposingClef") {
+            int idx = e.intAttribute("staff", 1) - 1;
+            QString val(e.readElementText());
+            setClefType(idx, ClefTypeList(clefType(idx)._concertClef, Clef::clefType(val)));
+            }
+      else
+            return false;
+
+      return true;
       }
 
 //---------------------------------------------------------
@@ -434,7 +415,7 @@ Channel::Channel()
 //   write
 //---------------------------------------------------------
 
-void Channel::write(Xml& xml, Part* part) const
+void Channel::write(XmlWriter& xml, Part* part) const
       {
       if (name.isEmpty() || name == "normal")
             xml.stag("Channel");
@@ -630,7 +611,7 @@ int Instrument::channelIdx(const QString& s) const
 //   write
 //---------------------------------------------------------
 
-void MidiArticulation::write(Xml& xml) const
+void MidiArticulation::write(XmlWriter& xml) const
       {
       if (name.isEmpty())
             xml.stag("Articulation");
@@ -677,7 +658,7 @@ void MidiArticulation::read(XmlReader& e)
 
 void Instrument::updateVelocity(int* velocity, int /*channelIdx*/, const QString& name)
       {
-      foreach(const MidiArticulation& a, _articulation) {
+      for (const MidiArticulation& a : _articulation) {
             if (a.name == name) {
                   *velocity = *velocity * a.velocity / 100;
                   break;
@@ -691,7 +672,7 @@ void Instrument::updateVelocity(int* velocity, int /*channelIdx*/, const QString
 
 void Instrument::updateGateTime(int* gateTime, int /*channelIdx*/, const QString& name)
       {
-      foreach(const MidiArticulation& a, _articulation) {
+      for (const MidiArticulation& a : _articulation) {
             if (a.name == name) {
                   *gateTime = a.gateTime;
                   break;
@@ -1006,7 +987,7 @@ Instrument Instrument::fromTemplate(const InstrumentTemplate* t)
 //   StaffNameList::write
 //---------------------------------------------------------
 
-void StaffNameList::write(Xml& xml, const char* name) const
+void StaffNameList::write(XmlWriter& xml, const char* name) const
       {
       for (const StaffName& sn : *this)
             sn.write(xml, name);

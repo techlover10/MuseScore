@@ -39,12 +39,14 @@ TextStyle::TextStyle(QString _name, QString _family, qreal _size,
    Align _align,
    const QPointF& _off, OffsetType _ot,
    bool sd,
-   bool hasFrame, Spatium fw, Spatium pw, int fr, QColor co, bool _circle, bool _systemFlag,
+   bool hasFrame,
+   bool square,
+   Spatium fw, Spatium pw, int fr, QColor co, bool _circle, bool _systemFlag,
    QColor fg, QColor bg, TextStyleHidden hidden)
       {
       d = new TextStyleData(_name, _family, _size,
          _bold, _italic, _underline, _align, _off, _ot,
-         sd, hasFrame, fw, pw, fr, co, _circle, _systemFlag, fg, bg);
+         sd, hasFrame, square, fw, pw, fr, co, _circle, _systemFlag, fg, bg);
       _hidden = hidden;
       }
 
@@ -79,6 +81,7 @@ TextStyleData::TextStyleData()
       italic                 = false;
       underline              = false;
       hasFrame               = false;
+      _square                = false;
       sizeIsSpatiumDependent = false;
       frameWidth             = Spatium(0);
       paddingWidth           = Spatium(0);
@@ -98,13 +101,15 @@ TextStyleData::TextStyleData(
    Align _align,
    const QPointF& _off, OffsetType _ot,
    bool sd,
-   bool _hasFrame, Spatium fw, Spatium pw, int fr, QColor co, bool _circle, bool _systemFlag,
+   bool _hasFrame,
+   bool square,
+   Spatium fw, Spatium pw, int fr, QColor co, bool _circle, bool _systemFlag,
    QColor fg, QColor bg)
    :
    ElementLayout(_align, _off, _ot),
    name(_name), size(_size), bold(_bold),
    italic(_italic), underline(_underline),
-   sizeIsSpatiumDependent(sd), hasFrame(_hasFrame), frameWidth(fw), paddingWidth(pw),
+   sizeIsSpatiumDependent(sd), hasFrame(_hasFrame), _square(square), frameWidth(fw), paddingWidth(pw),
    frameRound(fr), frameColor(co), circle(_circle), systemFlag(_systemFlag),
    foregroundColor(fg), backgroundColor(bg)
       {
@@ -127,6 +132,7 @@ bool TextStyleData::operator!=(const TextStyleData& s) const
           || s.italic                 != italic
           || s.underline              != underline
           || s.hasFrame               != hasFrame
+          || s._square                != _square
           || s.sizeIsSpatiumDependent != sizeIsSpatiumDependent
           || s.frameWidth             != frameWidth
           || s.paddingWidth           != paddingWidth
@@ -156,30 +162,8 @@ QFont TextStyleData::font(qreal _spatium) const
 
       if (sizeIsSpatiumDependent)
             m *= _spatium / SPATIUM20;
-
       f.setPointSizeF(m);
-      return f;
-      }
 
-//---------------------------------------------------------
-//   font
-//---------------------------------------------------------
-
-QFont TextStyleData::fontPx(qreal _spatium) const
-      {
-      qreal m = size;
-
-      QFont f(family);
-      f.setBold(bold);
-      f.setItalic(italic);
-      f.setUnderline(underline);
-#ifdef USE_GLYPHS
-      f.setHintingPreference(QFont::PreferVerticalHinting);
-#endif
-      if (sizeIsSpatiumDependent)
-            m *= _spatium / SPATIUM20;
-
-      f.setPixelSize(lrint(m));
       return f;
       }
 
@@ -187,7 +171,7 @@ QFont TextStyleData::fontPx(qreal _spatium) const
 //   write
 //---------------------------------------------------------
 
-void TextStyleData::write(Xml& xml) const
+void TextStyleData::write(XmlWriter& xml) const
       {
       xml.stag("TextStyle");
       writeProperties(xml);
@@ -198,7 +182,7 @@ void TextStyleData::write(Xml& xml) const
 //   writeProperties
 //---------------------------------------------------------
 
-void TextStyleData::writeProperties(Xml& xml) const
+void TextStyleData::writeProperties(XmlWriter& xml) const
       {
       ElementLayout::writeProperties(xml);
       if (!name.isEmpty())
@@ -225,6 +209,8 @@ void TextStyleData::writeProperties(Xml& xml) const
             xml.tag("frameColor",   frameColor);
             if (circle)
                   xml.tag("circle", circle);
+            if (_square)
+                  xml.tag("square", _square);
             }
       if (systemFlag)
             xml.tag("systemFlag", systemFlag);
@@ -235,7 +221,7 @@ void TextStyleData::writeProperties(Xml& xml) const
 //    write only changes to the reference r
 //---------------------------------------------------------
 
-void TextStyleData::writeProperties(Xml& xml, const TextStyleData& r) const
+void TextStyleData::writeProperties(XmlWriter& xml, const TextStyleData& r) const
       {
       ElementLayout::writeProperties(xml, r);
       if (!name.isEmpty() && name != r.name)
@@ -269,6 +255,8 @@ void TextStyleData::writeProperties(Xml& xml, const TextStyleData& r) const
                   xml.tag("frameColor",   frameColor);
             if (circle != r.circle)
                   xml.tag("circle", circle);
+            if (_square != r._square)
+                  xml.tag("square", _square);
             }
       if (systemFlag != r.systemFlag)
             xml.tag("systemFlag", systemFlag);
@@ -301,6 +289,8 @@ void TextStyleData::restyle(const TextStyleData& os, const TextStyleData& ns)
             backgroundColor = ns.backgroundColor;
       if (hasFrame == os.hasFrame)
             hasFrame = ns.hasFrame;
+      if (_square == os._square)
+            _square = ns._square;
       if (frameWidth.val() == os.frameWidth.val())
             frameWidth = ns.frameWidth;
       if (paddingWidth.val() == os.paddingWidth.val())
@@ -368,6 +358,8 @@ bool TextStyleData::readProperties(XmlReader& e)
             }
       else if (tag == "frame")
             hasFrame = e.readInt();
+      else if (tag == "square")
+            _square = e.readInt();
       else if (tag == "paddingWidth")          // obsolete
             paddingWidthMM = e.readDouble();
       else if (tag == "paddingWidthS")
@@ -400,6 +392,7 @@ bool TextStyle::bold() const                             {  return d->bold;    }
 bool TextStyle::italic() const                           { return d->italic; }
 bool TextStyle::underline() const                        { return d->underline; }
 bool TextStyle::hasFrame() const                         { return d->hasFrame; }
+bool TextStyle::square() const                           { return d->_square; }
 Align TextStyle::align() const                           { return d->align(); }
 const QPointF& TextStyle::offset() const                 { return d->offset(); }
 QPointF TextStyle::offset(qreal spatium) const           { return d->offset(spatium); }
@@ -412,6 +405,7 @@ qreal TextStyle::frameWidthMM()  const                   { return d->frameWidthM
 qreal TextStyle::paddingWidthMM() const                  { return d->paddingWidthMM; }
 void TextStyle::setFrameWidth(Spatium v)                 { d->frameWidth = v; }
 void TextStyle::setPaddingWidth(Spatium v)               { d->paddingWidth = v; }
+void TextStyle::setSquare(bool val)                      { d->_square = val; }
 
 int TextStyle::frameRound() const                        { return d->frameRound; }
 QColor TextStyle::frameColor() const                     { return d->frameColor; }
@@ -437,16 +431,15 @@ void TextStyle::setCircle(bool v)                        { d->circle = v;     }
 void TextStyle::setSystemFlag(bool v)                    { d->systemFlag = v; }
 void TextStyle::setForegroundColor(const QColor& v)      { d->foregroundColor = v; }
 void TextStyle::setBackgroundColor(const QColor& v)      { d->backgroundColor = v; }
-void TextStyle::write(Xml& xml) const                    { d->write(xml); }
+void TextStyle::write(XmlWriter& xml) const                    { d->write(xml); }
 void TextStyle::read(XmlReader& v)               { d->read(v); }
 QFont TextStyle::font(qreal space) const                 { return d->font(space); }
-QFont TextStyle::fontPx(qreal spatium) const             { return d->fontPx(spatium); }
 QRectF TextStyle::bbox(qreal sp, const QString& s) const { return d->bbox(sp, s); }
 QFontMetricsF TextStyle::fontMetrics(qreal space) const  { return d->fontMetrics(space); }
 bool TextStyle::operator!=(const TextStyle& s) const     { return d->operator!=(*s.d); }
 void TextStyle::layout(Element* e) const                 { d->layout(e); }
-void TextStyle::writeProperties(Xml& xml) const          { d->writeProperties(xml); }
-void TextStyle::writeProperties(Xml& xml, const TextStyle& r) const { d->writeProperties(xml, *r.d); }
+void TextStyle::writeProperties(XmlWriter& xml) const          { d->writeProperties(xml); }
+void TextStyle::writeProperties(XmlWriter& xml, const TextStyle& r) const { d->writeProperties(xml, *r.d); }
 void TextStyle::restyle(const TextStyle& os, const TextStyle& ns) { d->restyle(*os.d, *ns.d); }
 bool TextStyle::readProperties(XmlReader& v)     { return d->readProperties(v); }
 

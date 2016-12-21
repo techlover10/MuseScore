@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<museScore version="2.06">
+<museScore version="3.00">
   <Score>
     <LayerTag id="0" tag="default"></LayerTag>
     <currentLayer>0</currentLayer>
@@ -109,7 +109,7 @@
           <lid>8</lid>
           <durationType>quarter</durationType>
           <Articulation>
-            <subtype>marcato</subtype>
+            <subtype>articMarcatoAbove</subtype>
             <lid>7</lid>
             </Articulation>
           <Note>
@@ -256,7 +256,7 @@
             <lid>8</lid>
             <durationType>quarter</durationType>
             <Articulation>
-              <subtype>marcato</subtype>
+              <subtype>articMarcatoAbove</subtype>
               <lid>7</lid>
               </Articulation>
             <Note>
@@ -291,7 +291,7 @@
             <lid>8</lid>
             <durationType>quarter</durationType>
             <Articulation>
-              <subtype>marcato</subtype>
+              <subtype>articMarcatoAbove</subtype>
               <lid>7</lid>
               </Articulation>
             <Note>

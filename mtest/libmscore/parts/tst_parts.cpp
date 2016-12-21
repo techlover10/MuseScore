@@ -28,6 +28,7 @@
 #include "libmscore/stafftype.h"
 #include "libmscore/sym.h"
 #include "libmscore/chordline.h"
+#include "libmscore/sym.h"
 #include "mtest/testutils.h"
 
 #define DIR QString("libmscore/parts/")
@@ -61,6 +62,7 @@ class TestParts : public QObject, public MTest
 
       void createPart1();
       void createPart2();
+      void voicesExcerpt();
 
       void createPartBreath();
       void addBreath();
@@ -140,15 +142,16 @@ void TestParts::createParts(MasterScore* score)
       parts.append(score->parts().at(0));
       Score* nscore = new Score(score);
 
-      Excerpt ex(score);
-      ex.setPartScore(nscore);
-      ex.setTitle(parts.front()->longName());
-      ex.setParts(parts);
-      ::createExcerpt(&ex);
+      Excerpt* ex = new Excerpt(score);
+      ex->setPartScore(nscore);
+      ex->setParts(parts);
+      ex->setTitle(parts.front()->partName());
+      Excerpt::createExcerpt(ex);
+      score->excerpts().append(ex);
+//      ex->setTitle(parts.front()->longName());
       QVERIFY(nscore);
 
-      nscore->setName(parts.front()->partName());
-      score->undo(new AddExcerpt(nscore));
+//      nscore->setName(parts.front()->partName());
 
       //
       // create second part
@@ -156,14 +159,80 @@ void TestParts::createParts(MasterScore* score)
       parts.clear();
       parts.append(score->parts().at(1));
       nscore = new Score(score);
-      ex.setTitle(parts.front()->longName());
-      ex.setPartScore(nscore);
-      ex.setParts(parts);
-      ::createExcerpt(&ex);
+
+      ex = new Excerpt(score);
+      ex->setPartScore(nscore);
+      ex->setParts(parts);
+      ex->setTitle(parts.front()->partName());
+      Excerpt::createExcerpt(ex);
+      score->excerpts().append(ex);
+//      ex->setTitle(parts.front()->longName());
       QVERIFY(nscore);
 
-      nscore->setName(parts.front()->partName());
-      score->undo(new AddExcerpt(nscore));
+//      nscore->setName(parts.front()->partName());
+
+      score->setExcerptsChanged(true);
+      }
+
+//---------------------------------------------------------
+//   voicesExcerpt
+//---------------------------------------------------------
+
+void TestParts::voicesExcerpt()
+      {
+      MasterScore* score = readScore(DIR + "voices.mscx");
+
+      //
+      // create first part
+      //
+      QList<Part*> parts;
+      QMultiMap<int, int> trackList;
+      parts.append(score->parts().at(0));
+      Score* nscore = new Score(score);
+
+      trackList.insert(1, 0);
+      trackList.insert(2, 1);
+      trackList.insert(4, 4);
+
+      Excerpt* ex = new Excerpt(score);
+      ex->setPartScore(nscore);
+      nscore->setExcerpt(ex);
+      score->excerpts().append(ex);
+      ex->setTitle(parts.front()->longName());
+      ex->setParts(parts);
+      ex->setTracks(trackList);
+      Excerpt::createExcerpt(ex);
+      QVERIFY(nscore);
+
+//      nscore->setName(parts.front()->partName());
+
+      //
+      // create second part
+      //
+      parts.clear();
+      parts.append(score->parts().at(1));
+      nscore = new Score(score);
+
+      trackList.clear();
+      trackList.insert(11, 0);
+
+      ex = new Excerpt(score);
+      ex->setPartScore(nscore);
+      nscore->setExcerpt(ex);
+      score->excerpts().append(ex);
+      ex->setTitle(parts.front()->longName());
+      ex->setParts(parts);
+      ex->setTracks(trackList);
+      Excerpt::createExcerpt(ex);
+      QVERIFY(nscore);
+
+//      nscore->setName(parts.front()->partName());
+
+      score->setExcerptsChanged(true);
+
+      QVERIFY(saveCompareScore(score, "voices.mscx", DIR + "voices-ref.mscx"));
+
+      delete score;
       }
 
 //---------------------------------------------------------
@@ -340,7 +409,7 @@ MasterScore* TestParts::doAddBreath()
       DropData dd;
       dd.view = 0;
       Breath* b = new Breath(score);
-      b->setBreathType(0);
+      b->setSymId(SymId::breathMarkComma);
       dd.element = b;
 
       score->startCmd();

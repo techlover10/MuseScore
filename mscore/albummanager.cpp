@@ -1,9 +1,9 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id: mscore.cpp 4220 2011-04-22 10:31:26Z wschweer $
+//  $Id: albummanager.cpp 4220 2011-04-22 10:31:26Z wschweer $
 //
-//  Copyright (C) 2011 Werner Schweer and others
+//  Copyright (C) 2011-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -34,12 +34,11 @@ namespace Ms {
 //---------------------------------------------------------
 
 AlbumManager::AlbumManager(QWidget* parent)
-   : QDialog(parent)
+   : AbstractDialog(parent)
       {
+      setObjectName("AlbumManager");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
-      up->setIcon(*icons[int(Icons::arrowUp_ICON)]);
-      down->setIcon(*icons[int(Icons::arrowDown_ICON)]);
 
       album = 0;
       connect(add,         SIGNAL(clicked()), SLOT(addClicked()));
@@ -59,6 +58,8 @@ AlbumManager::AlbumManager(QWidget* parent)
       print->setEnabled(false);
       albumName->setEnabled(false);
       createScore->setEnabled(false);
+
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -319,7 +320,7 @@ void AlbumManager::writeAlbum()
             QMessageBox::critical(mscore, QWidget::tr("MuseScore: Open Album File"), s.arg(album->path()));
             return;
             }
-      Xml xml(&f);
+      XmlWriter xml(gscore, &f);
       album->write(xml);
       if (f.error() != QFile::NoError) {
             QString s = QWidget::tr("Write Album failed: ") + f.errorString();
@@ -336,6 +337,16 @@ void MuseScore::showAlbumManager()
       if (albumManager == 0)
             albumManager = new AlbumManager(this);
       albumManager->show();
+      }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void AlbumManager::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QDialog::hideEvent(event);
       }
 }
 

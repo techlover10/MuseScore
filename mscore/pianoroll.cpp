@@ -33,8 +33,6 @@
 
 namespace Ms {
 
-extern bool useFactorySettings;
-
 //---------------------------------------------------------
 //   PianorollEditor
 //---------------------------------------------------------
@@ -42,6 +40,7 @@ extern bool useFactorySettings;
 PianorollEditor::PianorollEditor(QWidget* parent)
    : QMainWindow(parent)
       {
+      setObjectName("Pianoroll");
       setWindowTitle(QString("MuseScore"));
 
       waveView = 0;
@@ -50,8 +49,14 @@ PianorollEditor::PianorollEditor(QWidget* parent)
 
       QWidget* mainWidget = new QWidget;
       QToolBar* tb = addToolBar(tr("Toolbar 1"));
-      tb->addAction(getAction("undo"));
-      tb->addAction(getAction("redo"));
+      if (qApp->layoutDirection() == Qt::LayoutDirection::LeftToRight) {
+            tb->addAction(getAction("undo"));
+            tb->addAction(getAction("redo"));
+            }
+      else {
+            tb->addAction(getAction("redo"));
+            tb->addAction(getAction("undo"));
+            }
       tb->addSeparator();
 #ifdef HAS_MIDI
       tb->addAction(getAction("midi-on"));
@@ -197,13 +202,7 @@ PianorollEditor::PianorollEditor(QWidget* parent)
       connect(piano,       SIGNAL(keyPressed(int)),    SLOT(keyPressed(int)));
       connect(piano,       SIGNAL(keyReleased(int)),   SLOT(keyReleased(int)));
 
-      if (!useFactorySettings) {
-            QSettings settings;
-            settings.beginGroup("Pianoroll");
-            resize(settings.value("size", QSize(900, 500)).toSize());
-            move(settings.value("pos", QPoint(10, 10)).toPoint());
-            settings.endGroup();
-            }
+      readSettings();
 
       actions.append(getAction("delete"));
       actions.append(getAction("pitch-up"));
@@ -253,7 +252,7 @@ void PianorollEditor::setStaff(Staff* st)
             }
       staff = st;
       if (staff) {
-            setWindowTitle(tr("MuseScore: <%1> Staff: %2").arg(_score->fileInfo()->completeBaseName()).arg(st->idx()));
+            setWindowTitle(tr("MuseScore: <%1> Staff: %2").arg(_score->masterScore()->fileInfo()->completeBaseName()).arg(st->idx()));
             TempoMap* tl = _score->tempomap();
             TimeSigMap*  sl = _score->sigmap();
             for (int i = 0; i < 3; ++i)
@@ -273,11 +272,17 @@ void PianorollEditor::setStaff(Staff* st)
 
 void PianorollEditor::writeSettings()
       {
-      QSettings settings;
-      settings.beginGroup("Pianoroll");
-      settings.setValue("size", size());
-      settings.setValue("pos", QWidget::pos());
-      settings.endGroup();
+      MuseScore::saveGeometry(this);
+      }
+
+//---------------------------------------------------------
+//   readSettings
+//---------------------------------------------------------
+
+void PianorollEditor::readSettings()
+      {
+      resize(QSize(800, 600)); //ensure default size if no geometry in settings
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------

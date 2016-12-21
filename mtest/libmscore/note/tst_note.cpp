@@ -22,6 +22,9 @@
 #include "libmscore/segment.h"
 #include "libmscore/tremolo.h"
 #include "libmscore/articulation.h"
+#include "libmscore/sym.h"
+#include "libmscore/key.h"
+#include "libmscore/pitchspelling.h"
 #include "mtest/testutils.h"
 
 #define DIR QString("libmscore/note/")
@@ -44,6 +47,7 @@ class TestNote : public QObject, public MTest
       void tpcTranspose();
       void tpcTranspose2();
       void noteLimits();
+      void tpcDegrees();
       };
 
 //---------------------------------------------------------
@@ -349,8 +353,7 @@ void TestNote::grace()
 
       // articulation
       score->startCmd();
-      Articulation* ar = new Articulation(score);
-      ar->setArticulationType(ArticulationType::Sforzatoaccent);
+      Articulation* ar = new Articulation(SymId::articAccentAbove, score);
       ar->setParent(gc);
       ar->setTrack(gc->track());
       score->undoAddElement(ar);
@@ -370,26 +373,24 @@ void TestNote::grace()
 void TestNote::tpc()
       {
       MasterScore* score = readScore(DIR + "tpc.mscx");
-      score->doLayout();
 
       score->inputState().setTrack(0);
       score->inputState().setSegment(score->tick2segment(0, false, Segment::Type::ChordRest));
       score->inputState().setDuration(TDuration::DurationType::V_QUARTER);
       score->inputState().setNoteEntryMode(true);
       int octave = 5 * 7;
-      score->cmdAddPitch(octave + 1, false);
-      score->cmdAddPitch(octave + 2, false);
-      score->cmdAddPitch(octave + 3, false);
-      score->cmdAddPitch(octave + 4, false);
-      score->cmdAddPitch(octave + 5, false);
-      score->cmdAddPitch(octave + 6, false);
-      score->cmdAddPitch(octave + 7, false);
-      score->cmdAddPitch(octave + 8, false);
+      score->cmdAddPitch(octave + 1, false, false);
+      score->cmdAddPitch(octave + 2, false, false);
+      score->cmdAddPitch(octave + 3, false, false);
+      score->cmdAddPitch(octave + 4, false, false);
+      score->cmdAddPitch(octave + 5, false, false);
+      score->cmdAddPitch(octave + 6, false, false);
+      score->cmdAddPitch(octave + 7, false, false);
+      score->cmdAddPitch(octave + 8, false, false);
 
       score->cmdConcertPitchChanged(true, true);
 
       QVERIFY(saveCompareScore(score, "tpc-test.mscx", DIR + "tpc-ref.mscx"));
-
       }
 
 //---------------------------------------------------------
@@ -400,7 +401,6 @@ void TestNote::tpc()
 void TestNote::tpcTranspose()
       {
       MasterScore* score = readScore(DIR + "tpc-transpose.mscx");
-      score->doLayout();
 
       score->startCmd();
       Measure* m = score->firstMeasure();
@@ -430,19 +430,21 @@ void TestNote::tpcTranspose()
 void TestNote::tpcTranspose2()
       {
       MasterScore* score = readScore(DIR + "tpc-transpose2.mscx");
-      score->doLayout();
 
       score->inputState().setTrack(0);
       score->inputState().setSegment(score->tick2segment(0, false, Segment::Type::ChordRest));
       score->inputState().setDuration(TDuration::DurationType::V_QUARTER);
       score->inputState().setNoteEntryMode(true);
       int octave = 5 * 7;
-      score->cmdAddPitch(octave + 3, false);
+      score->cmdAddPitch(octave + 3, false, false);
 
+      score->startCmd();
       score->cmdConcertPitchChanged(true, true);
+      score->endCmd();
+
+      printf("================\n");
 
       QVERIFY(saveCompareScore(score, "tpc-transpose2-test.mscx", DIR + "tpc-transpose2-ref.mscx"));
-
       }
 
 //---------------------------------------------------------
@@ -452,7 +454,6 @@ void TestNote::tpcTranspose2()
 void TestNote::noteLimits()
       {
       MasterScore* score = readScore(DIR + "empty.mscx");
-      score->doLayout();
 
       score->inputState().setTrack(0);
       score->inputState().setSegment(score->tick2segment(0, false, Segment::Type::ChordRest));
@@ -460,29 +461,40 @@ void TestNote::noteLimits()
       score->inputState().setNoteEntryMode(true);
 
       // over 127 shouldn't crash
-      score->cmdAddPitch(140, false);
+      score->cmdAddPitch(140, false, false);
       // below 0 shouldn't crash
-      score->cmdAddPitch(-40, false);
+      score->cmdAddPitch(-40, false, false);
 
       // stack chords
-      score->cmdAddPitch(42, false);
+      score->cmdAddPitch(42, false, false);
       for (int i = 1; i < 20; i++)
-            score->cmdAddPitch(42 + i * 7, true);
+            score->cmdAddPitch(42 + i * 7, true, false);
 
       // interval below
-      score->cmdAddPitch(42, false);
+      score->cmdAddPitch(42, false, false);
       for (int i = 0; i < 20; i++) {
             std::vector<Note*> nl = score->selection().noteList();
             score->cmdAddInterval(-8, nl);
             }
 
       // interval above
-      score->cmdAddPitch(42, false);
+      score->cmdAddPitch(42, false, false);
       for (int i = 0; i < 20; i++) {
             std::vector<Note*> nl = score->selection().noteList();
             score->cmdAddInterval(8, nl);
             }
       QVERIFY(saveCompareScore(score, "notelimits-test.mscx", DIR + "notelimits-ref.mscx"));
+      }
+
+void TestNote::tpcDegrees()
+      {
+      QCOMPARE(tpc2degree(Tpc::TPC_C,   Key::C),   0);
+      //QCOMPARE(tpc2degree(Tpc::TPC_E_S, Key::C),   3);
+      QCOMPARE(tpc2degree(Tpc::TPC_B,   Key::C),   6);
+      QCOMPARE(tpc2degree(Tpc::TPC_F_S, Key::C_S), 3);
+      QCOMPARE(tpc2degree(Tpc::TPC_B,   Key::C_S), 6);
+      QCOMPARE(tpc2degree(Tpc::TPC_B_B, Key::C_S), 6);
+      //QCOMPARE(tpc2degree(Tpc::TPC_B_S, Key::C_S), 7);
       }
 
 QTEST_MAIN(TestNote)

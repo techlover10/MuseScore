@@ -40,6 +40,15 @@ Symbol::Symbol(const Symbol& s)
       }
 
 //---------------------------------------------------------
+//   symName
+//---------------------------------------------------------
+
+QString Symbol::symName() const
+      {
+      return Sym::id2name(_sym);
+      }
+
+//---------------------------------------------------------
 //   setAbove
 //---------------------------------------------------------
 
@@ -69,7 +78,7 @@ void Symbol::layout()
 
 void Symbol::draw(QPainter* p) const
       {
-      if (type() != Element::Type::NOTEDOT || !staff()->isTabStaff()) {
+      if (type() != Element::Type::NOTEDOT || !staff()->isTabStaff(tick())) {
             p->setPen(curColor());
             if (_scoreFont)
                   _scoreFont->draw(_sym, p, magS(), QPointF());
@@ -82,7 +91,7 @@ void Symbol::draw(QPainter* p) const
 //   Symbol::write
 //---------------------------------------------------------
 
-void Symbol::write(Xml& xml) const
+void Symbol::write(XmlWriter& xml) const
       {
       xml.stag(name());
       xml.tag("name", Sym::id2name(_sym));
@@ -233,7 +242,9 @@ FSymbol::FSymbol(const FSymbol& s)
 void FSymbol::draw(QPainter* painter) const
       {
       QString s;
-      painter->setFont(_font);
+      QFont f(_font);
+      f.setPointSizeF(f.pointSizeF() * MScore::pixelRatio);
+      painter->setFont(f);
       if (_code & 0xffff0000) {
             s = QChar(QChar::highSurrogate(_code));
             s += QChar(QChar::lowSurrogate(_code));
@@ -248,11 +259,11 @@ void FSymbol::draw(QPainter* painter) const
 //   write
 //---------------------------------------------------------
 
-void FSymbol::write(Xml& xml) const
+void FSymbol::write(XmlWriter& xml) const
       {
       xml.stag(name());
       xml.tag("font",     _font.family());
-      xml.tag("fontsize", _font.pixelSize());
+      xml.tag("fontsize", _font.pointSizeF());
       xml.tag("code",     _code);
       BSymbol::writeProperties(xml);
       xml.etag();
@@ -269,7 +280,7 @@ void FSymbol::read(XmlReader& e)
             if (tag == "font")
                   _font.setFamily(e.readElementText());
             else if (tag == "fontsize")
-                  _font.setPixelSize(e.readInt());
+                  _font.setPointSizeF(e.readDouble());
             else if (tag == "code")
                   _code = e.readInt();
             else if (!BSymbol::readProperties(e))
@@ -291,7 +302,7 @@ void FSymbol::layout()
             }
       else
             s = QChar(_code);
-      QFontMetricsF fm(_font);
+      QFontMetricsF fm(_font, MScore::paintDevice());
       setbbox(fm.boundingRect(s));
       adjustReadPos();
       }

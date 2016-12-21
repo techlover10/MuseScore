@@ -36,21 +36,26 @@ class TrackList : public QList<Element*>
       ScoreRange* _range;
       int _track;
 
-      Tuplet* writeTuplet(Tuplet* tuplet, Measure* measure, int tick) const;
+      Tuplet* writeTuplet(Tuplet* parent, Tuplet* tuplet, Measure*& measure, Fraction& rest) const;
       void append(Element*);
+      void appendTuplet(Tuplet* srcTuplet, Tuplet* dstTuplet);
+      void combineTuplet(Tuplet* dst, Tuplet* src);
 
    public:
       TrackList(ScoreRange* r) { _range = r; }
       ~TrackList();
 
-      int track() const        { return _track; }
-      void setTrack(int val)   { _track = val; }
-      void read(const Segment* fs, const Segment* ls);
-      bool canWrite(const Fraction& f) const;
-      bool write(Measure*) const;
       Fraction duration() const  { return _duration; }
       ScoreRange* range() const { return _range; }
+
+      int track() const        { return _track; }
+      void setTrack(int val)   { _track = val; }
+
+      void read(const Segment* fs, const Segment* ls);
+      bool write(Score*, int tick) const;
+
       void appendGap(const Fraction&);
+      bool truncate(const Fraction&);
       void dump() const;
       };
 
@@ -79,13 +84,13 @@ class ScoreRange {
    public:
       ScoreRange() {}
       ~ScoreRange();
-      void read(Segment* first, Segment* last);
-      bool canWrite(const Fraction&) const;
+      void read(Segment* first, Segment* last, bool readSpanner = true);
       bool write(Score*, int tick) const;
       Fraction duration() const;
       Segment* first() const { return _first; }
       Segment* last() const  { return _last;  }
       void fill(const Fraction&);
+      bool truncate(const Fraction&);
 
       friend class TrackList;
       };

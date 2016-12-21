@@ -84,6 +84,7 @@
 #include "volta.h"
 #include "xml.h"
 #include "systemdivider.h"
+#include "stafftypechange.h"
 
 namespace Ms {
 
@@ -98,6 +99,7 @@ static const ElementName elementNames[] = {
       ElementName("Text",                 QT_TRANSLATE_NOOP("elementName", "Text")),
       ElementName("InstrumentName",       QT_TRANSLATE_NOOP("elementName", "Instrument Name")),
       ElementName("SlurSegment",          QT_TRANSLATE_NOOP("elementName", "Slur Segment")),
+      ElementName("TieSegment",           QT_TRANSLATE_NOOP("elementName", "Tie Segment")),
       ElementName("StaffLines",           QT_TRANSLATE_NOOP("elementName", "Staff Lines")),
       ElementName("BarLine",              QT_TRANSLATE_NOOP("elementName", "Barline")),
       ElementName("SystemDivider",        QT_TRANSLATE_NOOP("elementName", "System Divider")),
@@ -106,6 +108,7 @@ static const ElementName elementNames[] = {
 
       ElementName("Arpeggio",             QT_TRANSLATE_NOOP("elementName", "Arpeggio")),
       ElementName("Accidental",           QT_TRANSLATE_NOOP("elementName", "Accidental")),
+      ElementName("LedgerLine",           QT_TRANSLATE_NOOP("elementName", "Ledger Line")),
       ElementName("Stem",                 QT_TRANSLATE_NOOP("elementName", "Stem")),
       ElementName("Note",                 QT_TRANSLATE_NOOP("elementName", "Note")),
       ElementName("Clef",                 QT_TRANSLATE_NOOP("elementName", "Clef")),
@@ -115,7 +118,6 @@ static const ElementName elementNames[] = {
       ElementName("Rest",                 QT_TRANSLATE_NOOP("elementName", "Rest")),
       ElementName("Breath",               QT_TRANSLATE_NOOP("elementName", "Breath")),
       ElementName("RepeatMeasure",        QT_TRANSLATE_NOOP("elementName", "Repeat Measure")),
-      ElementName("Image",                QT_TRANSLATE_NOOP("elementName", "Image")),
       ElementName("Tie",                  QT_TRANSLATE_NOOP("elementName", "Tie")),
       ElementName("Articulation",         QT_TRANSLATE_NOOP("elementName", "Articulation")),
       ElementName("ChordLine",            QT_TRANSLATE_NOOP("elementName", "Chord Line")),
@@ -132,6 +134,7 @@ static const ElementName elementNames[] = {
       ElementName("StaffText",            QT_TRANSLATE_NOOP("elementName", "Staff Text")),
       ElementName("RehearsalMark",        QT_TRANSLATE_NOOP("elementName", "Rehearsal Mark")),
       ElementName("InstrumentChange",     QT_TRANSLATE_NOOP("elementName", "Instrument Change")),
+      ElementName("StaffTypeChange",      QT_TRANSLATE_NOOP("elementName", "Staff Typeype Change")),
       ElementName("Harmony",              QT_TRANSLATE_NOOP("elementName", "Chord Symbol")),
       ElementName("FretDiagram",          QT_TRANSLATE_NOOP("elementName", "Fretboard Diagram")),
       ElementName("Bend",                 QT_TRANSLATE_NOOP("elementName", "Bend")),
@@ -148,10 +151,10 @@ static const ElementName elementNames[] = {
       ElementName("LayoutBreak",          QT_TRANSLATE_NOOP("elementName", "Layout Break")),
       ElementName("Spacer",               QT_TRANSLATE_NOOP("elementName", "Spacer")),
       ElementName("StaffState",           QT_TRANSLATE_NOOP("elementName", "Staff State")),
-      ElementName("LedgerLine",           QT_TRANSLATE_NOOP("elementName", "Ledger Line")),
       ElementName("NoteHead",             QT_TRANSLATE_NOOP("elementName", "Notehead")),
       ElementName("NoteDot",              QT_TRANSLATE_NOOP("elementName", "Note Dot")),
       ElementName("Tremolo",              QT_TRANSLATE_NOOP("elementName", "Tremolo")),
+      ElementName("Image",                QT_TRANSLATE_NOOP("elementName", "Image")),
       ElementName("Measure",              QT_TRANSLATE_NOOP("elementName", "Measure")),
       ElementName("Selection",            QT_TRANSLATE_NOOP("elementName", "Selection")),
       ElementName("Lasso",                QT_TRANSLATE_NOOP("elementName", "Lasso")),
@@ -164,6 +167,7 @@ static const ElementName elementNames[] = {
       ElementName("Pedal",                QT_TRANSLATE_NOOP("elementName", "Pedal")),
       ElementName("Trill",                QT_TRANSLATE_NOOP("elementName", "Trill")),
       ElementName("TextLine",             QT_TRANSLATE_NOOP("elementName", "Text Line")),
+      ElementName("TextLineBase",         QT_TRANSLATE_NOOP("elementName", "Text Line Base")),  // remove
       ElementName("NoteLine",             QT_TRANSLATE_NOOP("elementName", "Note Line")),
       ElementName("LyricsLine",           QT_TRANSLATE_NOOP("elementName", "Melisma Line")),
       ElementName("Glissando",            QT_TRANSLATE_NOOP("elementName", "Glissando")),
@@ -271,26 +275,20 @@ QString Element::userName() const
 Element::Element(Score* s) :
    QObject(0), ScoreElement(s)
       {
-      _selected      = false;
-      _generated     = false;
-      _visible       = true;
       _placement     = Placement::BELOW;
-      _flags         = ElementFlag::SELECTABLE;
       _track         = -1;
       _color         = MScore::defaultColor;
       _mag           = 1.0;
       _tag           = 1;
       itemDiscovered = false;
-      _autoplace     = true;
+      _z             = -1;
       }
 
 Element::Element(const Element& e)
    : QObject(0), ScoreElement(e)
       {
       _parent     = e._parent;
-      _selected   = e._selected;
-      _generated  = e._generated;
-      _visible    = e._visible;
+      _z          = e._z;
       _placement  = e._placement;
       _flags      = e._flags;
       _track      = e._track;
@@ -302,7 +300,6 @@ Element::Element(const Element& e)
       _bbox       = e._bbox;
       _tag        = e._tag;
       itemDiscovered = false;
-      _autoplace  = e._autoplace;
       }
 
 //---------------------------------------------------------
@@ -334,7 +331,7 @@ void Element::adjustReadPos()
 
 void Element::scanElements(void* data, void (*func)(void*, Element*), bool all)
       {
-      if (all || _visible || score()->showInvisible())
+      if (all || visible() || score()->showInvisible())
             func(data, this);
       }
 
@@ -345,6 +342,7 @@ void Element::scanElements(void* data, void (*func)(void*, Element*), bool all)
 void Element::reset()
       {
       undoChangeProperty(P_ID::AUTOPLACE, propertyDefault(P_ID::AUTOPLACE));
+      undoChangeProperty(P_ID::PLACEMENT, propertyDefault(P_ID::PLACEMENT));
       }
 
 //---------------------------------------------------------
@@ -366,7 +364,18 @@ Staff* Element::staff() const
       if (_track == -1 || score()->staves().empty())
             return 0;
 
-      return score()->staff(staffIdx());
+      return score()->staff(_track >> 2);
+      }
+
+//---------------------------------------------------------
+//   z
+//---------------------------------------------------------
+
+int Element::z() const
+      {
+      if (_z == -1)
+            _z = int(type()) * 100;
+      return _z;
       }
 
 //---------------------------------------------------------
@@ -402,7 +411,7 @@ QColor Element::curColor(const Element* proxy) const
       if (flag(ElementFlag::DROP_TARGET))
             return MScore::dropColor;
       bool marked = false;
-      if (type() == Element::Type::NOTE) {
+      if (isNote()) {
             const Note* note = static_cast<const Note*>(this);
             marked = note->mark();
             }
@@ -496,17 +505,21 @@ QPointF Element::pagePos() const
 
       if (_flags & ElementFlag::ON_STAFF) {
             System* system = 0;
-            if (parent()->type() == Element::Type::SEGMENT)
-                  system = toSegment(parent())->system();
+            Measure* measure = 0;
+            if (parent()->isSegment())
+                  measure = toSegment(parent())->measure();
             else if (parent()->isMeasure())           // used in measure number
-                  system = toMeasure(parent())->system();
+                  measure = toMeasure(parent());
             else if (parent()->isSystem())
                   system = toSystem(parent());
-            else {
-                  Q_ASSERT(false);
+            else
+                  qFatal("this %s parent %s\n", name(), parent()->name());
+            if (measure) {
+                  system = measure->system();
+                  p.ry() += measure->staffLines(vStaffIdx())->y();
                   }
             if (system)
-                  p.ry() += system->staffYpage(vStaffIdx());      // system->staff(si)->y() + system->y();
+                  p.ry() += system->staffYpage(vStaffIdx());
             p.rx() = pageX();
             }
       else {
@@ -528,21 +541,30 @@ QPointF Element::canvasPos() const
 
       if (_flags & ElementFlag::ON_STAFF) {
             System* system = 0;
-            if (parent()->type() == Element::Type::SEGMENT)
-                  system = toSegment(parent())->system();
+            Measure* measure = 0;
+            if (parent()->isSegment())
+                  measure = toSegment(parent())->measure();
+                  // system = toSegment(parent())->system();
             else if (parent()->isMeasure())     // used in measure number
-                  system = toMeasure(parent())->system();
+                  measure = toMeasure(parent());
+                  // system = toMeasure(parent())->system();
             else if (parent()->isSystem())
                   system = toSystem(parent());
-            else {
-                  Q_ASSERT(false);
+            else if (parent()->isChord())       // grace chord
+                  measure = toSegment(parent()->parent())->measure();
+            else
+                  qFatal("this %s parent %s\n", name(), parent()->name());
+            if (measure) {
+                  p.ry() += measure->staffLines(vStaffIdx())->y();
+                  system = measure->system();
+                  if (system) {
+                        Page* page = system->page();
+                        if (page)
+                              p.ry() += page->y();
+                        }
                   }
-            if (system) {
-                  p.ry() += system->staffYpage(vStaffIdx());      // system->staff(si)->y() + system->y();
-                  Page* page = system->page();
-                  if (page)
-                        p.ry() += page->y();
-                  }
+            if (system)
+                  p.ry() += system->staffYpage(vStaffIdx());
             p.rx() = canvasX();
             }
       else
@@ -640,26 +662,26 @@ bool Element::intersects(const QRectF& rr) const
 //   writeProperties
 //---------------------------------------------------------
 
-void Element::writeProperties(Xml& xml) const
+void Element::writeProperties(XmlWriter& xml) const
       {
       // copy paste should not keep links
-      if (_links && (_links->size() > 1) && !xml.clipboardmode)
+      if (_links && (_links->size() > 1) && !xml.clipboardmode())
             xml.tag("lid", _links->lid());
-      if (!_autoplace && !userOff().isNull()) {
-            if (type() == Element::Type::VOLTA_SEGMENT
-                || type() == Element::Type::GLISSANDO_SEGMENT
+      if (!autoplace() && !userOff().isNull()) {
+            if (isVoltaSegment()
+                || isGlissandoSegment()
                 || isChordRest()
                 || isRehearsalMark()
                 || isDynamic()
-                || type() == Element::Type::SYSTEM_DIVIDER
-                || (xml.clipboardmode && isSLineSegment()))
+                || isSystemDivider()
+                || (xml.clipboardmode() && isSLineSegment()))
                   xml.tag("offset", userOff() / spatium());
             else
                   xml.tag("pos", pos() / score()->spatium());
             }
-      if (((track() != xml.curTrack) || (type() == Element::Type::SLUR)) && (track() != -1)) {
+      if (((track() != xml.curTrack()) || (type() == Element::Type::SLUR)) && (track() != -1)) {
             int t;
-            t = track() + xml.trackDiff;
+            t = track() + xml.trackDiff();
             xml.tag("track", t);
             }
       if (_tag != 0x1) {
@@ -672,6 +694,7 @@ void Element::writeProperties(Xml& xml) const
             }
       writeProperty(xml, P_ID::COLOR);
       writeProperty(xml, P_ID::VISIBLE);
+      writeProperty(xml, P_ID::Z);
       writeProperty(xml, P_ID::PLACEMENT);
       }
 
@@ -693,7 +716,7 @@ bool Element::readProperties(XmlReader& e)
             e.readInt();
       else if (tag == "userOff") {
             _userOff = e.readPoint();
-            _autoplace = false;
+            setAutoplace(false);
             }
       else if (tag == "lid") {
             int id = e.readInt();
@@ -725,12 +748,12 @@ bool Element::readProperties(XmlReader& e)
             }
       else if (tag == "offset") {
             setUserOff(e.readPoint() * spatium());
-            _autoplace = false;
+            setAutoplace(false);
             }
       else if (tag == "pos") {
             QPointF pt = e.readPoint();
             _readPos = pt * score()->spatium();
-            _autoplace = false;
+            setAutoplace(false);
             }
       else if (tag == "voice")
             setTrack((_track/VOICES)*VOICES + e.readInt());
@@ -745,6 +768,8 @@ bool Element::readProperties(XmlReader& e)
             }
       else if (tag == "placement")
             _placement = Placement(Ms::getProperty(P_ID::PLACEMENT, e).toInt());
+      else if (tag == "z")
+            setZ(e.readInt());
       else
             return false;
       return true;
@@ -754,7 +779,7 @@ bool Element::readProperties(XmlReader& e)
 //   write
 //---------------------------------------------------------
 
-void Element::write(Xml& xml) const
+void Element::write(XmlWriter& xml) const
       {
       xml.stag(name());
       writeProperties(xml);
@@ -814,7 +839,7 @@ void ElementList::replace(Element* o, Element* n)
 //   write
 //---------------------------------------------------------
 
-void ElementList::write(Xml& xml) const
+void ElementList::write(XmlWriter& xml) const
       {
       for (const Element* e : *this)
             e->write(xml);
@@ -828,7 +853,7 @@ StaffLines::StaffLines(Score* s)
    : Element(s)
       {
       setWidth(1.0);      // dummy
-      lines = 5;
+      _lines = 5;
       setSelectable(false);
       }
 
@@ -839,8 +864,7 @@ StaffLines::StaffLines(Score* s)
 QPointF StaffLines::pagePos() const
       {
       System* system = measure()->system();
-      return QPointF(measure()->x() + system->x(),
-         system->staff(staffIdx())->y() + system->y());
+      return QPointF(measure()->x() + system->x(), system->staff(staffIdx())->y() + system->y());
       }
 
 //---------------------------------------------------------
@@ -868,23 +892,24 @@ QPointF StaffLines::canvasPos() const
 void StaffLines::layout()
       {
       Staff* s = staff();
-      qreal _spatium;
+      qreal _spatium = spatium();
+      dist   = _spatium;
+      setPos(QPointF());
       if (s) {
-            _spatium = s->spatium();
             setMag(s->mag());
-            StaffType* st = s->staffType();
-            dist  = st->lineDistance().val() * _spatium;
-            lines = st->lines();
             setColor(s->color());
+            StaffType* st = s->staffType(measure()->tick());
+            dist         *= st->lineDistance().val();
+            _lines        = st->lines();
+            if (_lines == 1)
+                  rypos() = 2 * dist;
             }
       else {
-            _spatium = score()->spatium();
-            dist  = _spatium;
-            lines = 5;
+            _lines = 5;
             setColor(MScore::defaultColor);
             }
       lw = score()->styleS(StyleIdx::staffLineWidth).val() * _spatium;
-      bbox().setRect(0.0, -lw*.5, measure()->width(), (lines-1) * dist + lw);
+      bbox().setRect(0.0, -lw*.5, measure()->width(), (_lines-1) * dist + lw);
       }
 
 //---------------------------------------------------------
@@ -893,37 +918,15 @@ void StaffLines::layout()
 
 void StaffLines::draw(QPainter* painter) const
       {
-      QPointF _pos(0.0, 0.0);
-
-      qreal x1 = _pos.x();
+      qreal x1 = pos().x();
       qreal x2 = x1 + width();
 
-      QVector<QLineF> ll(lines);
-      qreal y = _pos.y();
-      for (int i = 0; i < lines; ++i) {
+      QVector<QLineF> ll(_lines);
+      qreal y = pos().y();
+      for (int i = 0; i < _lines; ++i) {
             ll[i].setLine(x1, y, x2, y);
             y += dist;
             }
-      if (MScore::debugMode) {
-            painter->setPen(QPen(Qt::lightGray, lw, Qt::SolidLine, Qt::FlatCap));
-            y = _pos.y() - 3 * dist;
-            painter->drawLine(QLineF(x1, y, x2, y));
-            y = _pos.y() - 2 * dist;
-            painter->drawLine(QLineF(x1, y, x2, y));
-            y = _pos.y() - dist;
-            painter->drawLine(QLineF(x1, y, x2, y));
-            y = _pos.y() + lines * dist;
-            painter->drawLine(QLineF(x1, y, x2, y));
-            y = _pos.y() + (lines+1) * dist;
-            painter->drawLine(QLineF(x1, y, x2, y));
-            y = _pos.y() + (lines+2) * dist;
-            painter->drawLine(QLineF(x1, y, x2, y));
-            y = _pos.y() + (lines+3) * dist;
-            painter->drawLine(QLineF(x1, y, x2, y));
-            y = _pos.y() + (lines+4) * dist;
-            painter->drawLine(QLineF(x1, y, x2, y));
-            }
-
       painter->setPen(QPen(curColor(), lw, Qt::SolidLine, Qt::FlatCap));
       painter->drawLines(ll);
       }
@@ -949,34 +952,17 @@ Line::Line(Score* s, bool v)
    : Element(s)
       {
       vertical = v;
-      _z = int(Element::Type::LINE) * 100;
       }
 
 //---------------------------------------------------------
-//   dump
+//   spatiumChanged
 //---------------------------------------------------------
 
-void Line::dump() const
+void Line::spatiumChanged(qreal oldValue, qreal newValue)
       {
-      qDebug("  width:%g height:%g vert:%d", point(_width), point(_len), vertical);
-      }
-
-//---------------------------------------------------------
-//   setLen
-//---------------------------------------------------------
-
-void Line::setLen(Spatium l)
-      {
-      _len = l;
-      }
-
-//---------------------------------------------------------
-//   setLineWidth
-//---------------------------------------------------------
-
-void Line::setLineWidth(Spatium w)
-      {
-      _width = w;
+      _width = (_width / oldValue) * newValue;
+      _len   = (_len / oldValue) * newValue;
+      layout();
       }
 
 //---------------------------------------------------------
@@ -985,14 +971,11 @@ void Line::setLineWidth(Spatium w)
 
 void Line::layout()
       {
-      qreal sp = spatium();
-      qreal w  = _width.val() * sp;
-      qreal l  = _len.val() * sp;
-      qreal w2 = w * .5;
+      qreal w2 = _width * .5;
       if (vertical)
-            bbox().setRect(-w2, -w2, w, l + w);
+            bbox().setRect(-w2, -w2, _width, _len + _width);
       else
-            bbox().setRect(-w2, -w2, l + w, w);
+            bbox().setRect(-w2, -w2, _len + _width, _width);
       }
 
 //---------------------------------------------------------
@@ -1001,24 +984,21 @@ void Line::layout()
 
 void Line::draw(QPainter* painter) const
       {
-      qreal sp = spatium();
-      painter->setPen(QPen(curColor(), _width.val() * sp));
-
-      qreal l = _len.val() * sp;
+      painter->setPen(QPen(curColor(), _width));
       if (vertical)
-            painter->drawLine(QLineF(0.0, 0.0, 0.0, l));
+            painter->drawLine(QLineF(0.0, 0.0, 0.0, _len));
       else
-            painter->drawLine(QLineF(0.0, 0.0, l, 0.0));
+            painter->drawLine(QLineF(0.0, 0.0, _len, 0.0));
       }
 
 //---------------------------------------------------------
 //   writeProperties
 //---------------------------------------------------------
 
-void Line::writeProperties(Xml& xml) const
+void Line::writeProperties(XmlWriter& xml) const
       {
-      xml.tag("lineWidth", _width.val());
-      xml.tag("lineLen", _len.val());
+      xml.tag("lineWidth", _width / spatium());
+      xml.tag("lineLen", _len / spatium());
       if (!vertical)
             xml.tag("vertical", vertical);
       }
@@ -1032,9 +1012,9 @@ bool Line::readProperties(XmlReader& e)
       const QStringRef& tag(e.name());
 
       if (tag == "lineWidth")
-            _width = Spatium(e.readDouble());
+            _width = e.readDouble() * spatium();
       else if (tag == "lineLen")
-            _len = Spatium(e.readDouble());
+            _len = e.readDouble() * spatium();
       else if (tag == "vertical")
             vertical = e.readInt();
       else
@@ -1162,11 +1142,11 @@ QByteArray Element::mimeData(const QPointF& dragOffset) const
       {
       QBuffer buffer;
       buffer.open(QIODevice::WriteOnly);
-      Xml xml(&buffer);
-      xml.clipboardmode = true;
+      XmlWriter xml(score(), &buffer);
+      xml.setClipboardmode(true);
       xml.stag("Element");
-      if (type() == Element::Type::NOTE)
-            xml.fTag("duration", static_cast<const Note*>(this)->chord()->duration());
+      if (isNote())
+            xml.tag("duration", toNote(this)->chord()->duration());
       if (!dragOffset.isNull())
             xml.tag("dragOffset", dragOffset);
       write(xml);
@@ -1281,6 +1261,7 @@ Element* Element::create(Element::Type type, Score* score)
             case Element::Type::STAFF_TEXT:        return new StaffText(score);
             case Element::Type::REHEARSAL_MARK:    return new RehearsalMark(score);
             case Element::Type::INSTRUMENT_CHANGE: return new InstrumentChange(score);
+            case Element::Type::STAFFTYPE_CHANGE:  return new StaffTypeChange(score);
             case Element::Type::NOTEHEAD:          return new NoteHead(score);
             case Element::Type::NOTEDOT:           return new NoteDot(score);
             case Element::Type::TREMOLO:           return new Tremolo(score);
@@ -1317,10 +1298,11 @@ Element* Element::create(Element::Type type, Score* score)
             case Element::Type::BAGPIPE_EMBELLISHMENT: return new BagpipeEmbellishment(score);
             case Element::Type::AMBITUS:           return new Ambitus(score);
 
-            case Element::Type::TEXTLINE_SEGMENT:    // return new TextLineSegment(score);
+            case Element::Type::TEXTLINE_BASE:
+            case Element::Type::TEXTLINE_SEGMENT:
             case Element::Type::GLISSANDO_SEGMENT:
-
             case Element::Type::SLUR_SEGMENT:
+            case Element::Type::TIE_SEGMENT:
             case Element::Type::STEM_SLASH:
             case Element::Type::LINE:
             case Element::Type::TIE:
@@ -1445,13 +1427,14 @@ QVariant Element::getProperty(P_ID propertyId) const
       {
       switch (propertyId) {
             case P_ID::TRACK:     return track();
-            case P_ID::GENERATED: return _generated;
+            case P_ID::GENERATED: return generated();
             case P_ID::COLOR:     return color();
-            case P_ID::VISIBLE:   return _visible;
-            case P_ID::SELECTED:  return _selected;
+            case P_ID::VISIBLE:   return visible();
+            case P_ID::SELECTED:  return selected();
             case P_ID::USER_OFF:  return _userOff;
             case P_ID::PLACEMENT: return int(_placement);
             case P_ID::AUTOPLACE: return autoplace();
+            case P_ID::Z:         return z();
             default:
                   return QVariant();
             }
@@ -1468,7 +1451,7 @@ bool Element::setProperty(P_ID propertyId, const QVariant& v)
                   setTrack(v.toInt());
                   break;
             case P_ID::GENERATED:
-                  _generated = v.toBool();
+                  setGenerated(v.toBool());
                   break;
             case P_ID::COLOR:
                   setColor(v.value<QColor>());
@@ -1488,6 +1471,9 @@ bool Element::setProperty(P_ID propertyId, const QVariant& v)
                   break;
             case P_ID::AUTOPLACE:
                   setAutoplace(v.toBool());
+                  break;
+            case P_ID::Z:
+                  setZ(v.toInt());
                   break;
             default:
                   qFatal("Element::setProperty: unknown <%s>(%d), data <%s>",
@@ -1520,6 +1506,8 @@ QVariant Element::propertyDefault(P_ID id) const
                   return QPointF();
             case P_ID::AUTOPLACE:
                   return true;
+            case P_ID::Z:
+                  return int(type()) * 100;
             default:    // not all properties have a default
                   break;
             }
@@ -1589,8 +1577,8 @@ void Element::readProperty(XmlReader& e, P_ID id)
 
 bool Element::isSLine() const
       {
-      return type() == Element::Type::HAIRPIN || type() == Element::Type::OTTAVA || type() == Element::Type::PEDAL
-         || type() == Element::Type::TRILL || type() == Element::Type::VOLTA || type() == Element::Type::TEXTLINE || type() == Element::Type::NOTELINE || type() == Element::Type::GLISSANDO;
+      return isHairpin() || isOttava() || isPedal()
+         || isTrill() || isVolta() || isTextLine() || isNoteLine() || isGlissando();
       }
 
 //---------------------------------------------------------
@@ -1599,7 +1587,9 @@ bool Element::isSLine() const
 
 bool Element::isSLineSegment() const
       {
-      return type() == Element::Type::HAIRPIN_SEGMENT || type() == Element::Type::OTTAVA_SEGMENT || type() == Element::Type::PEDAL_SEGMENT || type() == Element::Type::TRILL_SEGMENT || type() == Element::Type::VOLTA_SEGMENT || type() == Element::Type::TEXTLINE_SEGMENT || type() == Element::Type::GLISSANDO_SEGMENT;
+      return isHairpinSegment() || isOttavaSegment() || isPedalSegment()
+         || isTrillSegment() || isVoltaSegment() || isTextLineSegment()
+         || isGlissandoSegment();
       }
 
 //---------------------------------------------------------
@@ -1993,7 +1983,7 @@ Element* Element::prevElement()
 
 QString Element::accessibleInfo() const
       {
-      return userName();
+      return Element::userName();
       }
 
 //---------------------------------------------------------
@@ -2048,6 +2038,8 @@ int Element::tick() const
       while (e) {
             if (e->isSegment())
                   return toSegment(e)->tick();
+            else if (e->isMeasure())
+                  return toMeasure(e)->tick();
             e = e->parent();
             }
       return -1;

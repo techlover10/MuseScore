@@ -19,10 +19,12 @@ namespace Ms {
 
 extern QString dataPath;
 extern QString mscoreGlobalShare;
+extern QString localeName;
 
 ResourceManager::ResourceManager(QWidget *parent) :
       QDialog(parent)
       {
+      setObjectName("ResourceManager");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       QDir dir;
@@ -32,20 +34,18 @@ ResourceManager::ResourceManager(QWidget *parent) :
       displayLanguages();
       languagesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
       languagesTable->verticalHeader()->hide();
-      tabs->removeTab(1);
-      tabs->setCurrentIndex(0);
+      tabs->removeTab(tabs->indexOf(plugins));
+      tabs->setCurrentIndex(tabs->indexOf(languages));
+      MuseScore::restoreGeometry(this);
       }
 
 void ResourceManager::displayPlugins()
       {
-      tabs->setTabText(1, "Plugins");
       textBrowser->setText("hello");
       }
 
 void ResourceManager::displayLanguages()
       {
-      tabs->setTabText(0,tr("Languages"));
-
       // Download details.json
       DownloadUtils *js = new DownloadUtils(this);
       js->setTarget(baseAddr + "languages/details.json");
@@ -185,6 +185,9 @@ void ResourceManager::download()
             if (result) {
                   QFile::remove(localPath);
                   button->setText(tr("Updated"));
+                  //  retranslate the UI if current language is updated
+                  if (data == buttonMap.first())
+                        setMscoreLocale(localeName);
                   }
             else {
                   button->setText(tr("Failed, try again"));
@@ -207,4 +210,16 @@ bool ResourceManager::verifyFile(QString path, QString hash)
             }
       return false;
       }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void ResourceManager::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
+      }
+
 }
+

@@ -38,7 +38,7 @@ add_library (
       articulation.cpp barline.cpp beam.cpp bend.cpp box.cpp
       bracket.cpp breath.cpp bsp.cpp chord.cpp chordline.cpp
       chordlist.cpp chordrest.cpp clef.cpp cleflist.cpp
-      drumset.cpp durationtype.cpp dynamic.cpp edit.cpp
+      drumset.cpp durationtype.cpp dynamic.cpp edit.cpp noteentry.cpp
       element.cpp elementlayout.cpp excerpt.cpp
       fifo.cpp fret.cpp glissando.cpp hairpin.cpp
       harmony.cpp hook.cpp image.cpp iname.cpp instrchange.cpp
@@ -48,13 +48,13 @@ add_library (
       measure.cpp navigate.cpp note.cpp noteevent.cpp ottava.cpp
       page.cpp part.cpp pedal.cpp pitch.cpp pitchspelling.cpp
       rendermidi.cpp repeat.cpp repeatlist.cpp rest.cpp
-      score.cpp segment.cpp select.cpp shadownote.cpp slur.cpp tie.cpp
+      score.cpp segment.cpp select.cpp shadownote.cpp slur.cpp tie.cpp slurtie.cpp
       spacer.cpp spanner.cpp staff.cpp staffstate.cpp
       stafftext.cpp stafftype.cpp stem.cpp style.cpp textstyle.cpp symbol.cpp
       sym.cpp system.cpp stringdata.cpp tempotext.cpp text.cpp
-      textframe.cpp textline.cpp timesig.cpp
+      textframe.cpp textline.cpp textlinebase.cpp timesig.cpp
       tremolobar.cpp tremolo.cpp trill.cpp tuplet.cpp
-      utils.cpp velo.cpp volta.cpp xml.cpp mscore.cpp
+      utils.cpp velo.cpp volta.cpp xmlreader.cpp xmlwriter.cpp mscore.cpp
       undo.cpp cmd.cpp scorefile.cpp revisions.cpp
       check.cpp input.cpp icon.cpp ossia.cpp
       tempo.cpp sig.cpp pos.cpp fraction.cpp duration.cpp
@@ -67,13 +67,13 @@ add_library (
       noteline.cpp spannermap.cpp
       bagpembell.cpp ambitus.cpp keylist.cpp scoreElement.cpp
       shape.cpp systemdivider.cpp midimapping.cpp
+      read114.cpp read206.cpp read300.cpp stafftypelist.cpp stafftypechange.cpp
       )
 
 set_target_properties (
       libmscore
       PROPERTIES
-         COMPILE_FLAGS "-g ${PCH_INCLUDE} -Wall -Wextra -Winvalid-pch"
-         #COMPILE_FLAGS "-g ${PCH_INCLUDE} -Wall -Wextra -Winvalid-pch -Woverloaded-virtual"
+         COMPILE_FLAGS "-g ${PCH_INCLUDE} -Wall -Wextra -Winvalid-pch -Woverloaded-virtual"
       )
 
 xcode_pch(libmscore all)

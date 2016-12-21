@@ -43,7 +43,6 @@
 #include "tie.h"
 #include "system.h"
 #include "text.h"
-#include "textline.h"
 #include "tremolo.h"
 #include "tuplet.h"
 #include "utils.h"
@@ -128,7 +127,8 @@ bool Selection::isStartActive() const
 //   isEndActive
 //---------------------------------------------------------
 
-bool Selection::isEndActive() const {
+bool Selection::isEndActive() const
+      {
       return activeSegment() && activeSegment()->tick() == tickEnd();
       }
 
@@ -138,8 +138,9 @@ bool Selection::isEndActive() const {
 
 Element* Selection::element() const
       {
-      return _el.size() == 1 ? _el[0] : 0;
+      return ((state() != SelState::RANGE) && (_el.size() == 1)) ? _el[0] : 0;
       }
+
 //---------------------------------------------------------
 //   cr
 //---------------------------------------------------------
@@ -175,6 +176,8 @@ Segment* Selection::firstChordRestSegment() const
       if (!isRange()) return 0;
 
       for (Segment* s = _startSegment; s && (s != _endSegment); s = s->next1MM()) {
+            if (!s->enabled())
+                  continue;
             if (s->isChordRestType())
                   return s;
             }
@@ -460,7 +463,7 @@ void Selection::updateSelectedElements()
             if (!canSelectVoice(st))
                   continue;
             for (Segment* s = _startSegment; s && (s != _endSegment); s = s->next1MM()) {
-                  if (s->isEndBarLineType())  // do not select end bar line
+                  if (!s->enabled() || s->isEndBarLineType())  // do not select end bar line
                         continue;
                   for (Element* e : s->annotations()) {
                         if (e->track() != st)
@@ -474,7 +477,7 @@ void Selection::updateSelectedElements()
                         continue;
                   if (e->isChordRest()) {
                         ChordRest* cr = toChordRest(e);
-                        for (Element* e : cr->lyricsList()) {
+                        for (Element* e : cr->lyrics()) {
                               if (e)
                                     appendFiltered(e);
                               }
@@ -614,12 +617,8 @@ QByteArray Selection::mimeData() const
       QByteArray a;
       switch (_state) {
             case SelState::LIST:
-                  if (isSingle()) {
-                        Element* e = element();
-                        if (e->type() == Element::Type::TEXTLINE_SEGMENT)
-                              e = static_cast<TextLineSegment*>(e)->textLine();
-                        a = e->mimeData(QPointF());
-                        }
+                  if (isSingle())
+                        a = element()->mimeData(QPointF());
                   else
                         a = symbolListMimeData();
                   break;
@@ -639,6 +638,8 @@ QByteArray Selection::mimeData() const
 bool hasElementInTrack(Segment* startSeg, Segment* endSeg, int track)
       {
       for (Segment* seg = startSeg; seg != endSeg; seg = seg->next1MM()) {
+            if (!seg->enabled())
+                  continue;
             if (seg->element(track))
                   return true;
             }
@@ -652,6 +653,8 @@ bool hasElementInTrack(Segment* startSeg, Segment* endSeg, int track)
 int firstElementInTrack(Segment* startSeg, Segment* endSeg, int track)
       {
       for (Segment* seg = startSeg; seg != endSeg; seg = seg->next1MM()) {
+            if (!seg->enabled())
+                  continue;
             if (seg->element(track))
                   return seg->tick();
             }
@@ -666,9 +669,9 @@ QByteArray Selection::staffMimeData() const
       {
       QBuffer buffer;
       buffer.open(QIODevice::WriteOnly);
-      Xml xml(&buffer);
+      XmlWriter xml(score(), &buffer);
       xml.header();
-      xml.clipboardmode = true;
+      xml.setClipboardmode(true);
       xml.setFilter(selectionFilter());
 
       int ticks  = tickEnd() - tickStart();
@@ -725,9 +728,9 @@ QByteArray Selection::symbolListMimeData() const
 
       QBuffer buffer;
       buffer.open(QIODevice::WriteOnly);
-      Xml xml(&buffer);
+      XmlWriter xml(score(), &buffer);
       xml.header();
-      xml.clipboardmode = true;
+      xml.setClipboardmode(true);
 
       int         topTrack    = 1000000;
       int         bottomTrack = 0;
@@ -749,6 +752,7 @@ Enabling copying of more element types requires enabling pasting in Score::paste
                   case Element::Type::TEXT:
                   case Element::Type::INSTRUMENT_NAME:
                   case Element::Type::SLUR_SEGMENT:
+                  case Element::Type::TIE_SEGMENT:
                   case Element::Type::STAFF_LINES:
                   case Element::Type::BAR_LINE:
                   case Element::Type::STEM_SLASH:
@@ -892,7 +896,7 @@ Enabling copying of more element types requires enabling pasting in Score::paste
             if (iter->second.e->type() == Element::Type::FIGURED_BASS) {
                   bool done = false;
                   for ( ; seg; seg = seg->next1()) {
-                        if (seg->segmentType() == Segment::Type::ChordRest) {
+                        if (seg->isChordRestType()) {
                               // if no ChordRest in right track, look in anotations
                               if (seg->element(currTrack) == nullptr) {
                                     foreach (Element* el, seg->annotations()) {
@@ -921,9 +925,9 @@ Enabling copying of more element types requires enabling pasting in Score::paste
                   }
             else {
                   while (seg && iter->second.s != seg) {
-                              seg = seg->nextCR(currTrack);
-                              numSegs++;
-                              }
+                        seg = seg->nextCR(currTrack);
+                        numSegs++;
+                        }
                   }
             xml.tag("segDelta", numSegs);
             iter->second.e->write(xml);
@@ -1028,7 +1032,7 @@ static bool checkEnd(Element* e, int endTick)
                   }
             // also check that the selection extends to the end of the top-level tuplet
             tuplet = static_cast<Tuplet*>(e);
-            if (tuplet->elements().first()->tick() + tuplet->actualTicks() > endTick)
+            if (tuplet->elements().front()->tick() + tuplet->actualTicks() > endTick)
                   return true;
             }
       else if (cr->type() == Element::Type::CHORD) {

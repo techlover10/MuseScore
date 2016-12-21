@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<museScore version="2.06">
+<museScore version="3.00">
   <Score>
     <LayerTag id="0" tag="default"></LayerTag>
     <currentLayer>0</currentLayer>
     <Division>480</Division>
     <Style>
       <maxSystemDistance>20</maxSystemDistance>
-      <lyricsDistance>0</lyricsDistance>
-      <lyricsMinBottomDistance>0</lyricsMinBottomDistance>
       <frameSystemDistance>0</frameSystemDistance>
       <barWidth>0.2</barWidth>
       <endBarWidth>0.4</endBarWidth>

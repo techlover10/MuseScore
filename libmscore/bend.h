@@ -16,8 +16,6 @@
 #include "element.h"
 #include "pitchvalue.h"
 
-class QPainter;
-
 namespace Ms {
 
 //---------------------------------------------------------
@@ -39,13 +37,13 @@ class Bend : public Element {
       virtual Element::Type type() const override { return Element::Type::BEND; }
       virtual void layout() override;
       virtual void draw(QPainter*) const override;
-      virtual void write(Xml&) const override;
+      virtual void write(XmlWriter&) const override;
       virtual void read(XmlReader& e) override;
       QList<PitchValue>& points()                { return _points; }
       const QList<PitchValue>& points() const    { return _points; }
       void setPoints(const QList<PitchValue>& p) { _points = p;    }
-      bool playBend() const          { return _playBend; }
-      void setPlayBend(bool v)       { _playBend = v;    }
+      bool playBend() const                      { return _playBend; }
+      void setPlayBend(bool v)                   { _playBend = v;    }
 
       // property methods
       virtual QVariant getProperty(P_ID propertyId) const override;

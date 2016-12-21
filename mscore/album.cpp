@@ -174,7 +174,7 @@ bool Album::createScore(const QString& fn, bool addPageBreak, bool addSectionBre
             }
       if (!joinExcerpt) {
             for (Excerpt* ex : score->excerpts())
-                  score->removeExcerpt(ex->partScore());
+                  score->removeExcerpt(ex);
             }
 
       for (AlbumItem* item : _scores) {
@@ -246,7 +246,7 @@ bool Album::read(const QString& p)
             return false;
             }
 
-      XmlReader e(&f);
+      XmlReader e(gscore, &f);
       while (e.readNextStartElement()) {
             if (e.name() == "museScore") {
                   QString version = e.attribute("version");
@@ -320,7 +320,7 @@ void Album::loadScores()
 //   save
 //---------------------------------------------------------
 
-void Album::save(Xml& xml)
+void Album::save(XmlWriter& xml)
       {
       xml.stag("Album");
       xml.tag("name", _name);
@@ -338,7 +338,7 @@ void Album::save(Xml& xml)
 //   write
 //---------------------------------------------------------
 
-void Album::write(Xml& xml)
+void Album::write(XmlWriter& xml)
       {
       xml.header();
       xml.stag("museScore version=\"" MSC_VERSION "\"");

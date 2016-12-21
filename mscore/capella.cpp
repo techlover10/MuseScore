@@ -52,6 +52,7 @@
 #include "libmscore/arpeggio.h"
 #include "libmscore/breath.h"
 #include "libmscore/hairpin.h"
+#include "libmscore/sym.h"
 
 extern QString rtf2html(const QString &);
 
@@ -86,11 +87,11 @@ static void addDynamic(Score* score, Segment* s, int track, const char* name)
 //   addArticulationText
 //---------------------------------------------------------
 
-static void addArticulationText(Score* score, ChordRest* cr, int track, const QString& name)
+static void addArticulationText(Score* score, ChordRest* cr, int track, SymId symId)
       {
       Articulation* na = new Articulation(score);
       na->setTrack(track);
-      na->setSubtype(name);
+      na->setSymId(symId);
       cr->add(na);
       }
 
@@ -199,10 +200,10 @@ static void processBasicDrawObj(QList<BasicDrawObj*> objects, Segment* s, int tr
                                                 addDynamic(score, s, track, "z");
                                                 break;
                                           case 'k':   // fermata down
-                                                addArticulationText(score, cr, track, QString("dfermata"));
+                                                addArticulationText(score, cr, track, SymId::fermataBelow);
                                                 break;
                                           case 'u':   // fermata up
-                                                addArticulationText(score, cr, track, QString("ufermata"));
+                                                addArticulationText(score, cr, track, SymId::fermataAbove);
                                                 break;
                                           case 'd':   // da capo D.C.
                                           case 'e':   // dal segno D.S.
@@ -220,7 +221,7 @@ static void processBasicDrawObj(QList<BasicDrawObj*> objects, Segment* s, int tr
                                                 {
                                                 Breath* b = new Breath(score);
                                                 b->setTrack(track);
-                                                b->setBreathType(3);
+                                                b->setSymId(SymId::caesura);
                                                 Segment* seg = s->measure()->getSegment(Segment::Type::Breath, s->tick() + (cr ? cr->actualTicks() : 0));
                                                 seg->add(b);
                                                 }
@@ -230,6 +231,7 @@ static void processBasicDrawObj(QList<BasicDrawObj*> objects, Segment* s, int tr
                                           }
                                     if (cr->type() == Element::Type::CHORD)
                                           switch (code) {
+#if 0 // TODO-ws
                                                 case 't':   //  trill
                                                       addArticulationText(score, cr, track, QString("trill"));
                                                       break;
@@ -279,6 +281,7 @@ static void processBasicDrawObj(QList<BasicDrawObj*> objects, Segment* s, int tr
                                                 case 211:   // alt. reverse turn
                                                       addArticulationText(score, cr, track, QString("reverseturn"));
                                                       break;
+#endif
                                                 case 172:   // arpeggio (short)
                                                 case 173:   // arpeggio (long)
                                                       {
@@ -335,6 +338,7 @@ static void processBasicDrawObj(QList<BasicDrawObj*> objects, Segment* s, int tr
                         p = p / 32.0 * score->spatium();
                         // text->setUserOff(st->pos());
                         text->setUserOff(p);
+                        text->setAutoplace(false);
                         // qDebug("setText %s (%f %f)(%f %f) <%s>",
                         //            qPrintable(st->font().family()),
                         //            st->pos().x(), st->pos().y(), p.x(), p.y(), qPrintable(st->text()));
@@ -689,12 +693,12 @@ static int readCapVoice(Score* score, CapVoice* cvoice, int staffIdx, int tick, 
                         int off;
                         switch (clef) {
                               case ClefType::G:      off = 0; break;
-                              case ClefType::G1:     off = 7; break;
-                              case ClefType::G2:     off = 14; break;
-                              case ClefType::G3:     off = -7; break;
+                              case ClefType::G8_VA:  off = 7; break;
+                              case ClefType::G15_MA: off = 14; break;
+                              case ClefType::G8_VB:  off = -7; break;
                               case ClefType::F:      off = -14; break;
-                              case ClefType::F8:     off = -21; break;
-                              case ClefType::F15:    off = -28; break;
+                              case ClefType::F8_VB:  off = -21; break;
+                              case ClefType::F15_MB: off = -28; break;
                               case ClefType::F_B:    off = -14; break;
                               case ClefType::F_C:    off = -14; break;
                               case ClefType::C1:     off = -7; break;
@@ -702,7 +706,7 @@ static int readCapVoice(Score* score, CapVoice* cvoice, int staffIdx, int tick, 
                               case ClefType::C3:     off = -7; break;
                               case ClefType::C4:     off = -7; break;
                               case ClefType::C5:     off = -7; break;
-                              case ClefType::G4:     off = 0; break;
+                              case ClefType::G_1:     off = 0; break;
                               case ClefType::F_8VA:  off = -7; break;
                               case ClefType::F_15MA: off = 0; break;
                               default:          off = 0; qDebug("clefType %d not implemented", int(clef));
@@ -762,12 +766,14 @@ static int readCapVoice(Score* score, CapVoice* cvoice, int staffIdx, int tick, 
 
                         processBasicDrawObj(o->objects, s, track, chord);
                         switch (o->articulation) {
+#if 0 // TODO-ws
                               case 1:   addArticulationText(score, chord, track, QString("staccato")); break;
                               case 2:   addArticulationText(score, chord, track, QString("tenuto")); break;
                               case 3:   addArticulationText(score, chord, track, QString("portato")); break;
                               case 4:   addArticulationText(score, chord, track, QString("staccatissimo")); break;
                               case 5:   addArticulationText(score, chord, track, QString("sforzato")); break;
                               case 6:   addArticulationText(score, chord, track, QString("marcato")); break;
+#endif
                               case 7:   // "weak beat"
                               case 8:   // "strong beat"
                               default:  if(o->articulation) qDebug("Articulation # %d not implemented", o->articulation); break;
@@ -799,7 +805,11 @@ static int readCapVoice(Score* score, CapVoice* cvoice, int staffIdx, int tick, 
                         clef->setClefType(nclef);
                         clef->setTrack(staffIdx * VOICES);
                         Measure* m = score->getCreateMeasure(tick);
-                        Segment* s = m->getSegment(Segment::Type::Clef, tick);
+                        Segment* s;
+                        if (tick == m->tick())
+                              s = m->getSegment(Segment::Type::HeaderClef, tick);
+                        else
+                              s = m->getSegment(Segment::Type::Clef, tick);
                         s->add(clef);
                         }
                         break;
@@ -1022,9 +1032,9 @@ static int readCapVoice(Score* score, CapVoice* cvoice, int staffIdx, int tick, 
                                     else {
                                           Hairpin* hp = new Hairpin(score);
                                           if (wdgo->decresc)
-                                                hp->setHairpinType(Hairpin::Type::DECRESCENDO);
+                                                hp->setHairpinType(HairpinType::DECRESC_HAIRPIN);
                                           else
-                                                hp->setHairpinType(Hairpin::Type::CRESCENDO);
+                                                hp->setHairpinType(HairpinType::CRESC_HAIRPIN);
                                           hp->setTick(cr1->tick());
                                           hp->setTick2(cr2->tick());
                                           hp->setTrack(track);
@@ -1899,14 +1909,15 @@ void ChordObj::read()
 //    return false on error
 //---------------------------------------------------------
 
-void Capella::read(void* p, qint64 len)
+bool Capella::read(void* p, qint64 len)
       {
       if (len == 0)
-            return;
+            return true;
       qint64 rv = f->read((char*)p, len);
       if (rv != len)
-            throw Capella::Error::CAP_EOF;
+            return false;
       curPos += len;
+      return true;
       }
 
 //---------------------------------------------------------
@@ -2288,8 +2299,8 @@ ClefType CapClef::clefType(Form form, ClefLine line, Oct oct)
       int idx = int(form) + (int(line) << 3) + (int(oct) << 5);
       switch (idx) {
             case int(Form::G) + (int(ClefLine::L2) << 3) + (int(Oct::OCT_NULL) << 5):  return ClefType::G;
-            case int(Form::G) + (int(ClefLine::L2) << 3) + (int(Oct::OCT_ALTA) << 5):  return ClefType::G1;
-            case int(Form::G) + (int(ClefLine::L2) << 3) + (int(Oct::OCT_BASSA) << 5): return ClefType::G3;
+            case int(Form::G) + (int(ClefLine::L2) << 3) + (int(Oct::OCT_ALTA) << 5):  return ClefType::G8_VA;
+            case int(Form::G) + (int(ClefLine::L2) << 3) + (int(Oct::OCT_BASSA) << 5): return ClefType::G8_VB;
 
             case int(Form::C) + (int(ClefLine::L1) << 3) + (int(Oct::OCT_NULL) << 5):  return ClefType::C1;
             case int(Form::C) + (int(ClefLine::L2) << 3) + (int(Oct::OCT_NULL) << 5):  return ClefType::C2;
@@ -2298,7 +2309,7 @@ ClefType CapClef::clefType(Form form, ClefLine line, Oct oct)
             case int(Form::C) + (int(ClefLine::L5) << 3) + (int(Oct::OCT_NULL) << 5):  return ClefType::C5;
 
             case int(Form::F) + (int(ClefLine::L4) << 3) + (int(Oct::OCT_NULL) << 5):  return ClefType::F;
-            case int(Form::F) + (int(ClefLine::L4) << 3) + (int(Oct::OCT_BASSA) << 5): return ClefType::F8;
+            case int(Form::F) + (int(ClefLine::L4) << 3) + (int(Oct::OCT_BASSA) << 5): return ClefType::F8_VB;
             case int(Form::F) + (int(ClefLine::L3) << 3) + (int(Oct::OCT_NULL) << 5):  return ClefType::F_B;
             case int(Form::F) + (int(ClefLine::L5) << 3) + (int(Oct::OCT_NULL) << 5):  return ClefType::F_C;
 
@@ -2471,6 +2482,12 @@ void Capella::readStaff(CapSystem* system)
       uchar d          = readByte();
       staff->log2Denom = (d & 0x7f) - 1;
       staff->allaBreve = d & 0x80;
+      qDebug("   CapStaff meter %d/%d allaBreve %d", staff->numerator, staff->log2Denom, staff->allaBreve);
+      if (staff->log2Denom > 7 || staff->log2Denom < 0) {
+            qDebug("   illegal fraction");
+            staff->log2Denom = 2;
+            staff->numerator = 4;
+            }
 
       staff->iLayout   = readByte();
       staff->topDistX  = readInt();

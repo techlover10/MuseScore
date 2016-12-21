@@ -13,12 +13,12 @@
 #ifndef __VOLTA_H__
 #define __VOLTA_H__
 
-#include "textline.h"
+#include "textlinebase.h"
 
 namespace Ms {
 
 class Score;
-class Xml;
+class XmlWriter;
 class Volta;
 class Measure;
 
@@ -29,11 +29,11 @@ extern LineSegment* voltaDebug;
 //   @@ VoltaSegment
 //---------------------------------------------------------
 
-class VoltaSegment : public TextLineSegment {
+class VoltaSegment : public TextLineBaseSegment {
       Q_OBJECT
 
    public:
-      VoltaSegment(Score* s) : TextLineSegment(s) {}
+      VoltaSegment(Score* s) : TextLineBaseSegment(s) {}
       virtual Element::Type type() const override   { return Element::Type::VOLTA_SEGMENT; }
       virtual VoltaSegment* clone() const override  { return new VoltaSegment(*this); }
       Volta* volta() const                          { return (Volta*)spanner(); }
@@ -51,7 +51,7 @@ class VoltaSegment : public TextLineSegment {
 //   @P voltaType  enum (Volta.CLOSE, Volta.OPEN)
 //---------------------------------------------------------
 
-class Volta : public TextLine {
+class Volta : public TextLineBase {
       Q_OBJECT
 
       Q_PROPERTY(Ms::Volta::Type voltaType READ voltaType WRITE undoSetVoltaType)
@@ -71,7 +71,7 @@ class Volta : public TextLine {
       virtual Element::Type type() const override { return Element::Type::VOLTA; }
       virtual LineSegment* createLineSegment() override;
 
-      virtual void write(Xml&) const override;
+      virtual void write(XmlWriter&) const override;
       virtual void read(XmlReader& e) override;
 
       QList<int> endings() const           { return _endings; }
@@ -92,6 +92,7 @@ class Volta : public TextLine {
       virtual PropertyStyle propertyStyle(P_ID) const override;
       virtual void resetProperty(P_ID id) override;
       virtual void styleChanged() override;
+      virtual StyleIdx getPropertyStyle(P_ID) const override;
 
       virtual void setYoff(qreal) override;
       virtual void reset() override;

@@ -40,6 +40,7 @@
 #include "libmscore/measure.h"
 #include "libmscore/timesig.h"
 #include "libmscore/segment.h"
+#include "libmscore/sym.h"
 
 namespace Ms {
 
@@ -75,7 +76,7 @@ void MuseData::musicalAttribute(QString s, Part* part)
                         Staff* staff = part->staff(0);
                         ts->setTrack(staff->idx() * VOICES);
                         Measure* measure = score->tick2measure(curTick);
-                        Segment* s = measure->getSegment(ts, curTick);
+                        Segment* s = measure->getSegment(Segment::Type::TimeSig, curTick);
                         s->add(ts);
                         }
                   }
@@ -276,7 +277,7 @@ void MuseData::readNote(Part* part, const QString& s)
       d.setVal(ticks);
       chord->setDurationType(d);
 
-      Segment* segment = measure->getSegment(chord, tick);
+      Segment* segment = measure->getSegment(Segment::Type::ChordRest, tick);
 
       voice = 0;
       for (; voice < VOICES; ++voice) {
@@ -319,39 +320,39 @@ void MuseData::readNote(Part* part, const QString& s)
                   closeSlur(3, tick, staff, voice);
             else if (an[i] == '.') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Staccato);
+                  atr->setSymId(SymId::articStaccatoAbove);
                   chord->add(atr);
                   }
             else if (an[i] == '_') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Tenuto);
+                  atr->setSymId(SymId::articTenutoAbove);
                   chord->add(atr);
                   }
             else if (an[i] == 'v') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Upbow);
+                  atr->setSymId(SymId::stringsUpBow);
                   chord->add(atr);
                   }
             else if (an[i] == 'n') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Downbow);
+                  atr->setSymId(SymId::stringsDownBow);
                   chord->add(atr);
                   }
             else if (an[i] == 't') {
                   Articulation* atr = new Articulation(score);
-                  atr->setArticulationType(ArticulationType::Trill);
+                  atr->setSymId(SymId::ornamentTrill);
                   chord->add(atr);
                   }
             else if (an[i] == 'F') {
                   Articulation* atr = new Articulation(score);
                   atr->setUp(true);
-                  atr->setArticulationType(ArticulationType::Fermata);
+                  atr->setSymId(SymId::fermataAbove);
                   chord->add(atr);
                   }
             else if (an[i] == 'E') {
                   Articulation* atr = new Articulation(score);
                   atr->setUp(false);
-                  atr->setArticulationType(ArticulationType::Fermata);
+                  atr->setSymId(SymId::fermataBelow);
                   chord->add(atr);
                   }
             else if (an[i] == 'O') {
@@ -465,7 +466,7 @@ void MuseData::readRest(Part* part, const QString& s)
       rest->setDuration(d.fraction());
       chordRest  = rest;
       rest->setTrack(gstaff * VOICES);
-      Segment* segment = measure->getSegment(rest, tick);
+      Segment* segment = measure->getSegment(Segment::Type::ChordRest, tick);
 
       voice = 0;
       for (; voice < VOICES; ++voice) {

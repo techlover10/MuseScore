@@ -157,7 +157,8 @@ add_custom_target(reporthtml
       )
 
 subdirs (
-#        libmscore/compat              # Expected not to work
+        libmscore/compat114
+        libmscore/compat206
         libmscore/album
         libmscore/barline
         libmscore/beam
@@ -167,22 +168,25 @@ subdirs (
         libmscore/clef_courtesy
         libmscore/concertpitch
         libmscore/copypaste
-        libmscore/copypastesymbollist # FAIL
+        libmscore/copypastesymbollist
         libmscore/dynamic
-#        libmscore/earlymusic          # FAIL
+        libmscore/earlymusic
         libmscore/element
+        libmscore/exchangevoices
         libmscore/hairpin
+        libmscore/implode_explode
         libmscore/instrumentchange
         libmscore/join
         libmscore/keysig
         libmscore/layout
+        libmscore/links
         libmscore/parts
         libmscore/measure
-#        libmscore/midi                # FAIL
-#        libmscore/midimapping         # FAIL
+        libmscore/midi                 # one disabled
+        libmscore/midimapping
         libmscore/note
-#        libmscore/plugins
         libmscore/repeat
+        libmscore/rhythmicGrouping
         libmscore/selectionfilter
         libmscore/selectionrangedelete
         libmscore/spanners
@@ -194,12 +198,19 @@ subdirs (
         libmscore/tuplet
         libmscore/text
         importmidi
-#ws        capella
+        capella
         biab
         musicxml
-#ws        guitarpro
-#        scripting
-#ws        testoves
+        guitarpro
+        scripting
+        testoves
+        zerberus/comments
+        zerberus/envelopes
+        zerberus/includes
+        zerberus/global
+        zerberus/opcodeparse
+        zerberus/inputControls
+        zerberus/loop
         )
 
 

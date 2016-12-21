@@ -15,8 +15,6 @@
 
 #include "element.h"
 
-class QPainter;
-
 namespace Ms {
 
 class Chord;
@@ -40,8 +38,8 @@ class ChordLine : public Element {
       bool _straight;
       QPainterPath path;
       bool modified;
-      float _lengthX;
-      float _lengthY;
+      qreal _lengthX;
+      qreal _lengthY;
       const int _initialLength = 2;
 
    public:
@@ -55,11 +53,11 @@ class ChordLine : public Element {
       Chord* chord() const                { return (Chord*)(parent()); }
       virtual bool isStraight() const     { return _straight; }
       virtual void setStraight(bool straight)   { _straight =  straight; }
-      virtual void setLengthX(float length)     { _lengthX = length; }
-      virtual void setLengthY(float length)     { _lengthY = length; }
+      virtual void setLengthX(qreal length)     { _lengthX = length; }
+      virtual void setLengthY(qreal length)     { _lengthY = length; }
 
       virtual void read(XmlReader&);
-      virtual void write(Xml& xml) const;
+      virtual void write(XmlWriter& xml) const;
       virtual void layout();
       virtual void draw(QPainter*) const;
 

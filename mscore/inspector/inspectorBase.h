@@ -15,11 +15,21 @@
 #define __INSPECTOR_BASE_H__
 
 #include "libmscore/property.h"
+#include "libmscore/style.h"
 
 namespace Ms {
 
 class Inspector;
 class Element;
+
+//---------------------------------------------------------
+//   InspectorPanel
+//---------------------------------------------------------
+
+struct InspectorPanel {
+      QToolButton* title;
+      QWidget* panel;
+};
 
 //---------------------------------------------------------
 //   InspectorItem
@@ -42,6 +52,7 @@ class InspectorBase : public QWidget {
 
       QSignalMapper* resetMapper;
       QSignalMapper* valueMapper;
+      QSignalMapper* styleMapper;
 
       bool dirty() const;
       void checkDifferentValues(const InspectorItem&);
@@ -50,16 +61,18 @@ class InspectorBase : public QWidget {
       virtual void valueChanged(int idx, bool reset);
       virtual void valueChanged(int idx);
       void resetClicked(int);
+      void setStyleClicked(int);
 
    protected:
       std::vector<InspectorItem> iList;
+      std::vector<InspectorPanel> pList;
       QVBoxLayout* _layout;
       Inspector* inspector;
 
       virtual void setValue(const InspectorItem&, QVariant);
       QVariant getValue(const InspectorItem&) const;
       bool isDefault(const InspectorItem&);
-      void mapSignals(const std::vector<InspectorItem>& il = std::vector<InspectorItem>());
+      void mapSignals(const std::vector<InspectorItem>& il = std::vector<InspectorItem>(), const std::vector<InspectorPanel>& pl = std::vector<InspectorPanel>());
       void setupLineStyle(QComboBox*);
 
    private slots:

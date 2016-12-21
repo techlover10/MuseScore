@@ -1,9 +1,9 @@
 //=============================================================================
 //  MuseScore
 //  Music Composition & Notation
-//  $Id: palette.cpp 5576 2012-04-24 19:15:22Z wschweer $
+//  $Id: palettebox.h 5576 2012-04-24 19:15:22Z wschweer $
 //
-//  Copyright (C) 2011 Werner Schweer and others
+//  Copyright (C) 2011-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -18,7 +18,7 @@
 
 namespace Ms {
 
-class Xml;
+class XmlWriter;
 class XmlReader;
 class Palette;
 
@@ -32,23 +32,30 @@ class PaletteBox : public QDockWidget {
       QVBoxLayout* vbox;
       Palette* newPalette(const QString& name, int slot);
       QComboBox* workspaceList;
+      QLineEdit* searchBox;
       const int paletteStretch = 1000;
+      QAction* singlePaletteAction;
+      QToolButton* addWorkspaceButton;
 
    private slots:
       void paletteCmd(PaletteCommand, int);
       void closeAll();
-      void displayMore(const QString& paletteName);
       void workspaceSelected(int idx);
       void newWorkspaceClicked();
       void setSinglePalette(bool);
+      void filterPalettes(const QString& text);
 
    signals:
       void changed();
 
+   private:
+      void changeEvent(QEvent *event);
+      void retranslate();
+
    public:
       PaletteBox(QWidget* parent = 0);
       void addPalette(Palette*);
-      void write(Xml&);
+      void write(XmlWriter&);
       bool read(XmlReader&);
       void clear();
       QList<Palette*> palettes() const;

@@ -137,20 +137,18 @@ void TestChordSymbol::testNoSystem()
       //
       QList<Part*> parts;
       parts.append(score->parts().at(0));
-
       Score* nscore = new Score(score);
-      score->Score::undo(new AddExcerpt(nscore));
 
-      {
-      Excerpt ex(score);
-      ex.setPartScore(nscore);
-      ex.setTitle(parts.front()->longName());
-      ex.setParts(parts);
-      ::createExcerpt(&ex);
+      Excerpt* ex = new Excerpt(score);
+      ex->setPartScore(nscore);
+      nscore->setExcerpt(ex);
+      score->excerpts().append(ex);
+      ex->setTitle(parts.front()->longName());
+      ex->setParts(parts);
+      Excerpt::createExcerpt(ex);
       QVERIFY(nscore);
-      }
 
-      nscore->setName(parts.front()->partName());
+//      nscore->setTitle(parts.front()->partName());
       nscore->style()->set(StyleIdx::createMultiMeasureRests, true);
 
       //
@@ -159,19 +157,20 @@ void TestChordSymbol::testNoSystem()
       parts.clear();
       parts.append(score->parts().at(1));
       nscore = new Score(score);
-      score->Score::undo(new AddExcerpt(nscore));
-      {
-      Excerpt ex(score);
-      ex.setTitle(parts.front()->longName());
-      ex.setParts(parts);
-      ex.setPartScore(nscore);
-      ::createExcerpt(&ex);
-      QVERIFY(nscore);
-      }
 
-      nscore->setName(parts.front()->partName());
+      ex = new Excerpt(score);
+      ex->setPartScore(nscore);
+      nscore->setExcerpt(ex);
+      score->excerpts().append(ex);
+      ex->setTitle(parts.front()->longName());
+      ex->setParts(parts);
+      Excerpt::createExcerpt(ex);
+      QVERIFY(nscore);
+
+//      nscore->setTitle(parts.front()->partName());
       nscore->style()->set(StyleIdx::createMultiMeasureRests, true);
 
+      score->setExcerptsChanged(true);
       score->doLayout();
       test_post(score, "no-system");
       }

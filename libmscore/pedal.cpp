@@ -11,7 +11,6 @@
 //=============================================================================
 
 #include "pedal.h"
-#include "textline.h"
 #include "sym.h"
 #include "xml.h"
 #include "system.h"
@@ -28,10 +27,45 @@ namespace Ms {
 
 void PedalSegment::layout()
       {
-      TextLineSegment::layout1();
-      if (parent())     // for palette
-            rypos() += score()->styleS(StyleIdx::pedalY).val() * spatium();
-      adjustReadPos();
+      if (autoplace())
+            setUserOff(QPointF());
+      TextLineBaseSegment::layout();
+      if (parent()) {     // for palette
+            rypos() += score()->styleP(pedal()->placeBelow() ? StyleIdx::pedalPosBelow : StyleIdx::pedalPosAbove);
+            if (autoplace()) {
+                  qreal minDistance = spatium() * .7;
+                  Shape s1 = shape().translated(pos());
+
+                  if (pedal()->placeBelow()) {
+                        qreal d  = system()->bottomDistance(staffIdx(), s1);
+                        if (d > -minDistance)
+                              rUserYoffset() = d + minDistance;
+                        }
+                  else {
+                        qreal d  = system()->topDistance(staffIdx(), s1);
+                        if (d > -minDistance)
+                              rUserYoffset() = -(d + minDistance);
+                        }
+                  }
+            else
+                  adjustReadPos();
+            }
+      }
+
+//---------------------------------------------------------
+//   getProperty
+//---------------------------------------------------------
+
+QVariant PedalSegment::getProperty(P_ID id) const
+      {
+      switch (id) {
+            case P_ID::LINE_WIDTH:
+            case P_ID::LINE_STYLE:
+            case P_ID::PLACEMENT:
+                  return pedal()->getProperty(id);
+            default:
+                  return TextLineBaseSegment::getProperty(id);
+            }
       }
 
 //---------------------------------------------------------
@@ -43,9 +77,10 @@ bool PedalSegment::setProperty(P_ID id, const QVariant& v)
       switch (id) {
             case P_ID::LINE_WIDTH:
             case P_ID::LINE_STYLE:
+            case P_ID::PLACEMENT:
                   return pedal()->setProperty(id, v);
             default:
-                  return TextLineSegment::setProperty(id, v);
+                  return TextLineBaseSegment::setProperty(id, v);
             }
       }
 
@@ -59,9 +94,10 @@ QVariant PedalSegment::propertyDefault(P_ID id) const
             case P_ID::LINE_WIDTH:
             case P_ID::LINE_STYLE:
             case P_ID::TEXT_STYLE_TYPE:
+            case P_ID::PLACEMENT:
                   return pedal()->propertyDefault(id);
             default:
-                  return TextLineSegment::propertyDefault(id);
+                  return TextLineBaseSegment::propertyDefault(id);
             }
       }
 
@@ -74,10 +110,11 @@ PropertyStyle PedalSegment::propertyStyle(P_ID id) const
       switch (id) {
             case P_ID::LINE_WIDTH:
             case P_ID::LINE_STYLE:
+            case P_ID::PLACEMENT:
                   return pedal()->propertyStyle(id);
 
             default:
-                  return TextLineSegment::propertyStyle(id);
+                  return TextLineBaseSegment::propertyStyle(id);
             }
       }
 
@@ -90,10 +127,11 @@ void PedalSegment::resetProperty(P_ID id)
       switch (id) {
             case P_ID::LINE_WIDTH:
             case P_ID::LINE_STYLE:
+            case P_ID::PLACEMENT:
                   return pedal()->resetProperty(id);
 
             default:
-                  return TextLineSegment::resetProperty(id);
+                  return TextLineBaseSegment::resetProperty(id);
             }
       }
 
@@ -111,7 +149,7 @@ void PedalSegment::styleChanged()
 //---------------------------------------------------------
 
 Pedal::Pedal(Score* s)
-   : TextLine(s)
+   : TextLineBase(s)
       {
       setBeginHookHeight(Spatium(-1.2));
       setEndHookHeight(Spatium(-1.2));
@@ -146,7 +184,7 @@ void Pedal::read(XmlReader& e)
                   setLineStyle(Qt::PenStyle(e.readInt()));
                   lineStyleStyle = PropertyStyle::UNSTYLED;
                   }
-            else if (!TextLine::readProperties(e))
+            else if (!TextLineBase::readProperties(e))
                   e.unknown();
             }
       }
@@ -166,7 +204,7 @@ LineSegment* Pedal::createLineSegment()
 
 void Pedal::setYoff(qreal val)
       {
-      rUserYoffset() += (val - score()->styleS(StyleIdx::pedalY).val()) * spatium();
+      rUserYoffset() += val * spatium() - score()->styleP(placeAbove() ? StyleIdx::pedalPosAbove : StyleIdx::pedalPosBelow);
       }
 
 //---------------------------------------------------------
@@ -176,18 +214,27 @@ void Pedal::setYoff(qreal val)
 bool Pedal::setProperty(P_ID propertyId, const QVariant& val)
       {
       switch (propertyId) {
+            case P_ID::PLACEMENT:
+                  if (val != getProperty(propertyId)) {
+                        // reverse hooks
+                        setBeginHookHeight(-beginHookHeight());
+                        setEndHookHeight(-endHookHeight());
+                        }
+                  setPlacement(Placement(val.toInt()));
+                  break;
+
             case P_ID::LINE_WIDTH:
                   lineWidthStyle = PropertyStyle::UNSTYLED;
-                  TextLine::setProperty(propertyId, val);
+                  TextLineBase::setProperty(propertyId, val);
                   break;
 
             case P_ID::LINE_STYLE:
                   lineStyleStyle = PropertyStyle::UNSTYLED;
-                  TextLine::setProperty(propertyId, val);
+                  TextLineBase::setProperty(propertyId, val);
                   break;
 
             default:
-                  if (!TextLine::setProperty(propertyId, val))
+                  if (!TextLineBase::setProperty(propertyId, val))
                         return false;
                   break;
             }
@@ -212,7 +259,7 @@ QVariant Pedal::propertyDefault(P_ID propertyId) const
                   return int(TextStyleType::PEDAL);
 
             default:
-                  return TextLine::propertyDefault(propertyId);
+                  return TextLineBase::propertyDefault(propertyId);
             }
       }
 
@@ -230,7 +277,7 @@ PropertyStyle Pedal::propertyStyle(P_ID id) const
                   return lineStyleStyle;
 
             default:
-                  return TextLine::propertyStyle(id);
+                  return TextLineBase::propertyStyle(id);
             }
       }
 
@@ -252,7 +299,7 @@ void Pedal::resetProperty(P_ID id)
                   break;
 
             default:
-                  return TextLine::resetProperty(id);
+                  return TextLineBase::resetProperty(id);
             }
       }
 
@@ -345,6 +392,23 @@ QPointF Pedal::linePos(Grip grip, System** sys) const
 
       *sys = s;
       return QPointF(x, 0);
+      }
+
+//---------------------------------------------------------
+//   getPropertyStyle
+//---------------------------------------------------------
+
+StyleIdx Pedal::getPropertyStyle(P_ID id) const
+      {
+      switch (id) {
+            case P_ID::LINE_WIDTH:
+                  return StyleIdx::pedalLineWidth;
+            case P_ID::LINE_STYLE:
+                  return StyleIdx::pedalLineStyle;
+            default:
+                  break;
+            }
+      return StyleIdx::NOSTYLE;
       }
 
 }

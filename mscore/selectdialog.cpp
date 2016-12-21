@@ -28,6 +28,8 @@
 #include "libmscore/element.h"
 #include "libmscore/system.h"
 #include "libmscore/score.h"
+#include "libmscore/slur.h"
+#include "musescore.h"
 
 namespace Ms {
 
@@ -38,6 +40,7 @@ namespace Ms {
 SelectDialog::SelectDialog(const Element* _e, QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("SelectDialog");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       e = _e;
@@ -55,14 +58,16 @@ SelectDialog::SelectDialog(const Element* _e, QWidget* parent)
                   subtype->setText(qApp->translate("TextStyle", e->subtypeName().toUtf8()));
                   break;
             case Element::Type::ARTICULATION: // comes translated, but from a different method
-                  subtype->setText(static_cast<const Articulation*>(e)->subtypeUserName());
+                  subtype->setText(static_cast<const Articulation*>(e)->userName());
                   break;
             // other come translated or don't need any or are too difficult to implement
             default: subtype->setText(e->subtypeName());
             }
       sameSubtype->setEnabled(e->subtype() != -1);
       subtype->setEnabled(e->subtype() != -1);
-      inSelection->setEnabled(e->score()->selection().isRange());    
+      inSelection->setEnabled(e->score()->selection().isRange());
+
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -73,6 +78,8 @@ void SelectDialog::setPattern(ElementPattern* p)
       {
       p->type    = int(e->type());
       p->subtype = int(e->subtype());
+      if (e->isSlurSegment())
+            p->subtype = int(toSlurSegment(e)->spanner()->type());
 
       if (sameStaff->isChecked()) {
             p->staffStart = e->staffIdx();
@@ -100,5 +107,16 @@ void SelectDialog::setPattern(ElementPattern* p)
                   } while (e);
             }
       }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void SelectDialog::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
+      }
+
 }
 

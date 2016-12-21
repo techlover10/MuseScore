@@ -6,12 +6,9 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>340</width>
+    <width>205</width>
     <height>124</height>
    </rect>
-  </property>
-  <property name="windowTitle">
-   <string/>
   </property>
   <property name="accessibleName">
    <string>Jump Inspector</string>
@@ -33,7 +30,13 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="QLabel" name="elementName">
+    <widget class="QToolButton" name="title">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="font">
       <font>
        <weight>75</weight>
@@ -43,19 +46,10 @@
      <property name="text">
       <string>Jump</string>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
     </widget>
    </item>
    <item>
     <widget class="QFrame" name="frame">
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>6</height>
-      </size>
-     </property>
      <property name="frameShape">
       <enum>QFrame::HLine</enum>
      </property>
@@ -68,112 +62,98 @@
     </widget>
    </item>
    <item>
-    <layout class="QGridLayout" name="gridLayout">
-     <property name="leftMargin">
-      <number>3</number>
-     </property>
-     <property name="rightMargin">
-      <number>3</number>
-     </property>
-     <property name="horizontalSpacing">
-      <number>3</number>
-     </property>
-     <property name="verticalSpacing">
-      <number>0</number>
-     </property>
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="jumpTo">
-       <property name="accessibleName">
-        <string>Jump to</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Jump to</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Play until</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>Continue at</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="playUntil">
-       <property name="accessibleName">
-        <string>Play until</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="continueAt">
-       <property name="accessibleName">
-        <string>Continue at</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <widget class="QToolButton" name="resetJumpTo">
-       <property name="toolTip">
-        <string>Reset value</string>
-       </property>
-       <property name="accessibleName">
-        <string>Reset 'Jump to' value</string>
-       </property>
-       <property name="text">
-        <string notr="true">...</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QToolButton" name="resetPlayUntil">
-       <property name="toolTip">
-        <string>Reset value</string>
-       </property>
-       <property name="accessibleName">
-        <string>Reset 'Play until' value</string>
-       </property>
-       <property name="text">
-        <string notr="true">...</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="2">
-      <widget class="QToolButton" name="resetContinueAt">
-       <property name="toolTip">
-        <string>Reset value</string>
-       </property>
-       <property name="accessibleName">
-        <string>Reset 'Continue at' value</string>
-       </property>
-       <property name="text">
-        <string notr="true">...</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QWidget" name="panel" native="true">
+     <layout class="QGridLayout" name="gridLayout">
+      <property name="leftMargin">
+       <number>3</number>
+      </property>
+      <property name="rightMargin">
+       <number>3</number>
+      </property>
+      <property name="horizontalSpacing">
+       <number>3</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>0</number>
+      </property>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="jumpTo">
+        <property name="accessibleName">
+         <string>Jump to</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Jump to:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Play until:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Continue at:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="playUntil">
+        <property name="accessibleName">
+         <string>Play until</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="continueAt">
+        <property name="accessibleName">
+         <string>Continue at</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="QCheckBox" name="playRepeats">
+        <property name="text">
+         <string>Play repeats</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QToolButton" name="resetPlayRepeats">
+        <property name="toolTip">
+         <string>Reset to default</string>
+        </property>
+        <property name="accessibleName">
+         <string>Reset 'Continue at' value</string>
+        </property>
+        <property name="text">
+         <string notr="true"/>
+        </property>
+        <property name="icon">
+         <iconset resource="../musescore.qrc">
+          <normaloff>:/data/icons/edit-reset.svg</normaloff>:/data/icons/edit-reset.svg</iconset>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
   </layout>
  </widget>
  <tabstops>
   <tabstop>jumpTo</tabstop>
-  <tabstop>resetJumpTo</tabstop>
   <tabstop>playUntil</tabstop>
-  <tabstop>resetPlayUntil</tabstop>
   <tabstop>continueAt</tabstop>
-  <tabstop>resetContinueAt</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="../musescore.qrc"/>
+ </resources>
  <connections/>
 </ui>

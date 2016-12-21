@@ -2,7 +2,7 @@
 //  MuseScore
 //  Music Composition & Notation
 //
-//  Copyright (C) 2014 Werner Schweer
+//  Copyright (C) 2014-2016 Werner Schweer
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2
@@ -14,6 +14,7 @@
 #define __STARTCENTER_H__
 
 #include "ui_startcenter.h"
+#include "abstractdialog.h"
 
 namespace Ms {
 
@@ -83,7 +84,7 @@ class CookieJar : public QNetworkCookieJar
 //   Startcenter
 //---------------------------------------------------------
 
-class Startcenter : public QDialog, public Ui::Startcenter
+class Startcenter : public AbstractDialog, public Ui::Startcenter
       {
       Q_OBJECT
 //TODO      MyWebView* _webView;
@@ -94,6 +95,9 @@ class Startcenter : public QDialog, public Ui::Startcenter
       void newScore();
       void openScoreClicked();
 
+   protected:
+      virtual void retranslate() { retranslateUi(this); }
+
    signals:
       void closed(bool);
 
@@ -101,8 +105,8 @@ class Startcenter : public QDialog, public Ui::Startcenter
       Startcenter();
       ~Startcenter();
       void updateRecentScores();
-      void writeSettings(QSettings&);
-      void readSettings(QSettings&);
+      void writeSettings();
+      void readSettings();
       };
 }
 #endif

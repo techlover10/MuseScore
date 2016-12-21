@@ -47,7 +47,7 @@ namespace Ms {
 
 int Staff::idx() const
       {
-      return score()->staffIdx(this);
+      return score()->staves().indexOf((Staff*)this, 0);
       }
 
 //---------------------------------------------------------
@@ -191,16 +191,6 @@ QString Staff::partName() const
       }
 
 //---------------------------------------------------------
-//   Staff
-//---------------------------------------------------------
-
-Staff::Staff(Score* s)
-  : ScoreElement(s)
-      {
-      _barLineTo = (lines() - 1) * 2;
-      }
-
-//---------------------------------------------------------
 //   ~Staff
 //---------------------------------------------------------
 
@@ -221,9 +211,12 @@ ClefTypeList Staff::clefType(int tick) const
       {
       ClefTypeList ct = clefs.clef(tick);
       if (ct._concertClef == ClefType::INVALID) {
-            switch(_staffType.group()) {
+            switch(staffType(tick)->group()) {
                   case StaffGroup::TAB:
-                        ct = ClefTypeList(ClefType(score()->styleI(StyleIdx::tabClef)));
+                        {
+                        ClefType sct = ClefType(score()->styleI(StyleIdx::tabClef));
+                        ct = staffType(tick)->lines() <= 4 ?  ClefTypeList(sct == ClefType::TAB ? ClefType::TAB4 : ClefType::TAB4_SERIF) : ClefTypeList(sct == ClefType::TAB ? ClefType::TAB : ClefType::TAB_SERIF);
+                        }
                         break;
                   case StaffGroup::STANDARD:
                         ct = defaultClefType();
@@ -245,6 +238,22 @@ ClefType Staff::clef(int tick) const
       ClefTypeList c = clefType(tick);
       return score()->styleB(StyleIdx::concertPitch) ? c._concertClef : c._transposingClef;
       }
+
+//---------------------------------------------------------
+//   Staff::nextClefTick
+//
+//    return the tick of next clef after tick
+//    return last tick of score if not found
+//---------------------------------------------------------
+
+int Staff::nextClefTick(int tick) const
+      {
+      int t = clefs.nextClefTick(tick);
+      if (t == -1)
+            return score()->lastMeasure()->last()->tick();
+      return t;
+      }
+
 
 #ifndef NDEBUG
 //---------------------------------------------------------
@@ -340,7 +349,7 @@ void Staff::removeClef(Clef* clef)
 Fraction Staff::timeStretch(int tick) const
       {
       TimeSig* timesig = timeSig(tick);
-      return timesig == 0 ? Fraction(1,1) : timesig->stretch();
+      return timesig ? timesig->stretch() : Fraction(1,1);
       }
 
 //---------------------------------------------------------
@@ -474,20 +483,20 @@ int Staff::currentKeyTick(int tick) const
 //   write
 //---------------------------------------------------------
 
-void Staff::write(Xml& xml) const
+void Staff::write(XmlWriter& xml) const
       {
-      int idx = score()->staffIdx(this);
+      int idx = this->idx();
       xml.stag(QString("Staff id=\"%1\"").arg(idx + 1));
       if (linkedStaves()) {
             Score* s = masterScore();
-            foreach(Staff* staff, linkedStaves()->staves()) {
+            for (Staff* staff : linkedStaves()->staves()) {
                   if ((staff->score() == s) && (staff != this))
-                        xml.tag("linkedTo", s->staffIdx(staff) + 1);
+                        xml.tag("linkedTo", staff->idx() + 1);
                   }
             }
 
       // for copy/paste we need to know the actual transposition
-      if (xml.clipboardmode) {
+      if (xml.clipboardmode()) {
             Interval v = part()->instrument()->transpose(); // TODO: tick?
             if (v.diatonic)
                   xml.tag("transposeDiatonic", v.diatonic);
@@ -495,7 +504,7 @@ void Staff::write(Xml& xml) const
                   xml.tag("transposeChromatic", v.chromatic);
             }
 
-      _staffType.write(xml);
+      staffType(0)->write(xml);
       ClefTypeList ct = _defaultClefType;
       if (ct._concertClef == ct._transposingClef) {
             if (ct._concertClef != ClefType::G)
@@ -506,7 +515,7 @@ void Staff::write(Xml& xml) const
             xml.tag("defaultTransposingClef", ClefInfo::tag(ct._transposingClef));
             }
 
-      if (small() && !xml.excerptmode)    // switch small staves to normal ones when extracting part
+      if (small() && !xml.excerptmode())    // switch small staves to normal ones when extracting part
             xml.tag("small", small());
       if (invisible())
             xml.tag("invisible", invisible());
@@ -523,22 +532,8 @@ void Staff::write(Xml& xml) const
             xml.tagE(QString("bracket type=\"%1\" span=\"%2\"").arg((signed char)(i._bracket)).arg(i._bracketSpan));
 
       // for economy and consistency, only output "from" and "to" attributes if different from default
-      int defaultLineFrom = (lines() == 1 ? BARLINE_SPAN_1LINESTAFF_FROM : 0);
-      int defaultLineTo;
-      if (_barLineSpan == 0)                    // if no bar line at all
-            defaultLineTo = _barLineTo;         // whatever the current spanTo is, use as default
-      else {                                    // if some bar line, default is the default for span target staff
-            int targetStaffIdx = idx + _barLineSpan - 1;
-            if (targetStaffIdx >= score()->nstaves()) {
-                  qInfo("bad _barLineSpan %d for staff %d (nstaves %d)",
-                     _barLineSpan, idx, score()->nstaves());
-                  targetStaffIdx = score()->nstaves() - 1;
-                  }
-            int targetStaffLines = score()->staff(targetStaffIdx)->lines();
-            defaultLineTo = (targetStaffLines == 1 ? BARLINE_SPAN_1LINESTAFF_TO : (targetStaffLines-1) * 2);
-            }
-      if (_barLineSpan != 1 || _barLineFrom != defaultLineFrom || _barLineTo != defaultLineTo) {
-            if(_barLineFrom != defaultLineFrom || _barLineTo != defaultLineTo)
+      if (_barLineSpan != 1 || _barLineFrom || _barLineTo) {
+            if (_barLineFrom || _barLineTo)
                   xml.tag(QString("barLineSpan from=\"%1\" to=\"%2\"").arg(_barLineFrom).arg(_barLineTo), _barLineSpan);
             else
                   xml.tag("barLineSpan", _barLineSpan);
@@ -548,6 +543,10 @@ void Staff::write(Xml& xml) const
 
       writeProperty(xml, P_ID::MAG);
       writeProperty(xml, P_ID::COLOR);
+      writeProperty(xml, P_ID::PLAYBACK_VOICE1);
+      writeProperty(xml, P_ID::PLAYBACK_VOICE2);
+      writeProperty(xml, P_ID::PLAYBACK_VOICE3);
+      writeProperty(xml, P_ID::PLAYBACK_VOICE4);
       xml.etag();
       }
 
@@ -562,18 +561,11 @@ void Staff::read(XmlReader& e)
             if (tag == "type") {    // obsolete
                   int staffTypeIdx = e.readInt();
                   qDebug("obsolete: Staff::read staffTypeIdx %d", staffTypeIdx);
-                  _staffType = *StaffType::preset(StaffTypes(staffTypeIdx));
-                  // set default barLineFrom and barLineTo according to staff type num. of lines
-                  // (1-line staff bar lines are special)
-                  _barLineFrom = (lines() == 1 ? BARLINE_SPAN_1LINESTAFF_FROM : 0);
-                  _barLineTo   = (lines() == 1 ? BARLINE_SPAN_1LINESTAFF_TO   : (lines() - 1) * 2);
                   }
             else if (tag == "StaffType") {
-                  _staffType.read(e);
-                  // set default barLineFrom and barLineTo according to staff type num. of lines
-                  // (1-line staff bar lines are special)
-                  _barLineFrom = (lines() == 1 ? BARLINE_SPAN_1LINESTAFF_FROM : 0);
-                  _barLineTo   = (lines() == 1 ? BARLINE_SPAN_1LINESTAFF_TO   : (lines() - 1) * 2);
+                  StaffType st;
+                  st.read(e);
+                  _staffTypeList.setStaffType(0, &st);
                   }
             else if (tag == "defaultClef") {           // sets both default transposing and concert clef
                   QString val(e.readElementText());
@@ -615,25 +607,9 @@ void Staff::read(XmlReader& e)
                   e.readNext();
                   }
             else if (tag == "barLineSpan") {
-// WARNING: following statement assumes number of staff lines to be correctly set
-                  // must read <StaffType> before reading the <barLineSpan>
-                  int defaultSpan = (lines() == 1 ? BARLINE_SPAN_1LINESTAFF_FROM : 0);
-                  _barLineFrom = e.intAttribute("from", defaultSpan);
-
-                  // the proper default SpanTo depends upon the barLineSpan
-                  // as we do not know it yet, set a generic (UNKNOWN) default
-                  defaultSpan = UNKNOWN_BARLINE_TO;
-                  _barLineTo = e.intAttribute("to", defaultSpan);
-
-                  // ready to read the main value...
+                  _barLineFrom = e.intAttribute("from", 0);
+                  _barLineTo   = e.intAttribute("to", 0);
                   _barLineSpan = e.readInt();
-
-                  //...and to adjust the SpanTo value if the source did not provide an explicit value
-                  // if no bar line or single staff span, set _barLineTo to this staff height
-                  // if span to another staff (yet to be read), leave as unknown
-                  // (Score::read() will retrieve the correct height of the target staff)
-                  if (_barLineTo == UNKNOWN_BARLINE_TO && _barLineSpan <= 1)
-                        _barLineTo = lines() == 1 ? BARLINE_SPAN_1LINESTAFF_TO : (lines() - 1) * 2;
                   }
             else if (tag == "distOffset")
                   _userDist = e.readDouble() * score()->spatium();
@@ -653,7 +629,7 @@ void Staff::read(XmlReader& e)
                               }
                         }
                   else {
-                        int idx = score()->staffIdx(this);
+                        int idx = this->idx();
                         if (v >= 0 && v < idx)
                               linkTo(score()->staff(v));
                         }
@@ -664,6 +640,14 @@ void Staff::read(XmlReader& e)
                   e.setTransposeDiatonic(e.readInt());
             else if (tag == "transposeChromatic")
                   e.setTransposeChromatic(e.readInt());
+            else if (tag == "playbackVoice1")
+                  setPlaybackVoice(0, e.readInt());
+            else if (tag == "playbackVoice2")
+                  setPlaybackVoice(1, e.readInt());
+            else if (tag == "playbackVoice3")
+                  setPlaybackVoice(2, e.readInt());
+            else if (tag == "playbackVoice4")
+                  setPlaybackVoice(3, e.readInt());
             else
                   e.unknown();
             }
@@ -675,7 +659,8 @@ void Staff::read(XmlReader& e)
 
 qreal Staff::height() const
       {
-      return (lines() == 1 ? 2 : lines()-1) * spatium() * _staffType.lineDistance().val();
+      int tick = 0;     // TODO
+      return (lines(tick) == 1 ? 2 : lines(tick)-1) * spatium() * staffType(tick)->lineDistance().val();
       }
 
 //---------------------------------------------------------
@@ -740,54 +725,14 @@ int Staff::channel(int tick,  int voice) const
       }
 
 //---------------------------------------------------------
-//   lines
-//---------------------------------------------------------
-
-int Staff::lines() const
-      {
-      return _staffType.lines();
-      }
-
-//---------------------------------------------------------
-//   setLines
-//---------------------------------------------------------
-
-void Staff::setLines(int val)
-      {
-      if (val == lines())
-            return;
-      _staffType.setLines(val);     // TODO: make undoable
-      }
-
-//---------------------------------------------------------
-//   lineDistance
-//    distance between staff lines
-//---------------------------------------------------------
-
-qreal Staff::lineDistance() const
-      {
-      return _staffType.lineDistance().val();
-      }
-
-//---------------------------------------------------------
-//   logicalLineDistance
-//    distance between logical (note) lines
-//---------------------------------------------------------
-
-qreal Staff::logicalLineDistance() const
-      {
-      return scaleNotesToLines() ? _staffType.lineDistance().val() : 1.0;
-      }
-
-//---------------------------------------------------------
 //   scaleNotesToLines
 //    returns true if logical line = physical line
 //---------------------------------------------------------
 
-bool Staff::scaleNotesToLines() const
+bool Staff::scaleNotesToLines(int tick) const
       {
       // TODO: make style option
-      return !isDrumStaff();
+      return !isDrumStaff(tick);
       }
 
 //---------------------------------------------------------
@@ -795,14 +740,13 @@ bool Staff::scaleNotesToLines() const
 //    returns logical line number of middle staff line
 //---------------------------------------------------------
 
-int Staff::middleLine() const
+int Staff::middleLine(int tick) const
       {
-      int line = lines() - 1;
-      if (scaleNotesToLines())
+      int line = lines(tick) - 1;
+      if (scaleNotesToLines(tick))
             return line;
       else
-            return line * lineDistance() / logicalLineDistance();
-      //return isTabStaff() ? line : line * lineDistance() / logicalLineDistance();
+            return line * lineDistance(tick) / logicalLineDistance(tick);
       }
 
 //---------------------------------------------------------
@@ -810,32 +754,31 @@ int Staff::middleLine() const
 //    returns logical line number of bottom staff line
 //---------------------------------------------------------
 
-int Staff::bottomLine() const
+int Staff::bottomLine(int tick) const
       {
-      int line = (lines() - 1) * 2;
-      if (scaleNotesToLines())
+      int line = (lines(tick) - 1) * 2;
+      if (scaleNotesToLines(tick))
             return line;
       else
-            return line * lineDistance() / logicalLineDistance();
-      //return isTabStaff() ? line : line * lineDistance() / logicalLineDistance();
+            return line * lineDistance(tick) / logicalLineDistance(tick);
       }
 
 //---------------------------------------------------------
 //   slashStyle
 //---------------------------------------------------------
 
-bool Staff::slashStyle() const
+bool Staff::slashStyle(int tick) const
       {
-      return _staffType.slashStyle();
+      return staffType(tick)->slashStyle();
       }
 
 //---------------------------------------------------------
 //   setSlashStyle
 //---------------------------------------------------------
 
-void Staff::setSlashStyle(bool val)
+void Staff::setSlashStyle(int tick, bool val)
       {
-      _staffType.setSlashStyle(val);
+      staffType(tick)->setSlashStyle(val);
       }
 
 //---------------------------------------------------------
@@ -934,7 +877,7 @@ bool Staff::primaryStaff() const
       foreach(Staff* staff, _linkedStaves->staves()) {
             if (staff->score() == score()) {
                   s.append(staff);
-                  if (!staff->isTabStaff())
+                  if (!staff->isTabStaff(0))
                         ss.append(staff);
                   }
             }
@@ -945,32 +888,47 @@ bool Staff::primaryStaff() const
       }
 
 //---------------------------------------------------------
+//   staffType
+//---------------------------------------------------------
+
+const StaffType* Staff::staffType(int tick) const
+      {
+      return &_staffTypeList.staffType(tick);
+      }
+
+StaffType* Staff::staffType(int tick)
+      {
+      return &_staffTypeList.staffType(tick);
+      }
+
+//---------------------------------------------------------
+//   staffTypeListChanged
+//    Signal that the staffTypeList has changed at
+//    position tick. Update layout range.
+//---------------------------------------------------------
+
+void Staff::staffTypeListChanged(int tick)
+      {
+      score()->setLayout(tick);
+      auto i = _staffTypeList.find(tick);
+      ++i;
+      if (i != _staffTypeList.end())
+            score()->setLayout(i->first);
+      else
+            score()->setLayout(score()->lastMeasure()->endTick());
+      }
+
+//---------------------------------------------------------
 //   setStaffType
 //---------------------------------------------------------
 
-void Staff::setStaffType(const StaffType* st)
+StaffType* Staff::setStaffType(int tick, const StaffType* nst)
       {
-      if (_staffType == *st)
-            return;
-      int linesOld = lines();
-      int linesNew = st->lines();
-      _staffType = *st;
-
-      if (linesNew != linesOld) {
-            int sIdx = score()->staffIdx(this);
-            if (sIdx < 0) {                     // staff does not belong to score (yet?)
-                  if (linesNew == 1) {          // 1-line staves have special bar lines
-                        _barLineFrom = BARLINE_SPAN_1LINESTAFF_FROM;
-                        _barLineTo   = BARLINE_SPAN_1LINESTAFF_TO;
-                  }
-                  else {                        // set default barLineFrom/to (from first to last staff line)
-                        _barLineFrom = 0;
-                        _barLineTo   = (linesNew-1)*2;
-                        }
-                  }
-            else                                // update barLineFrom/To in whole score context
-                  score()->updateBarLineSpans(sIdx, linesOld, linesNew /*, true*/);
+      auto i = _staffTypeList.find(tick);
+      if (i != _staffTypeList.end()) {
+            qDebug("there is alread a type at %d", tick);
             }
+      return _staffTypeList.setStaffType(tick, nst);
       }
 
 //---------------------------------------------------------
@@ -993,7 +951,7 @@ void Staff::init(const InstrumentTemplate* t, const StaffType* staffType, int ci
       if (!pst)
             pst = StaffType::getDefaultPreset(t->staffGroup);
 
-      setStaffType(pst);
+      setStaffType(0, pst);
       setDefaultClefType(t->clefType(cidx));
       }
 
@@ -1003,7 +961,7 @@ void Staff::init(const InstrumentTemplate* t, const StaffType* staffType, int ci
 
 void Staff::init(const Staff* s)
       {
-      setStaffType(s->staffType());
+      _staffTypeList     = s->_staffTypeList;
       setDefaultClefType(s->defaultClefType());
       setSmall(s->small());
       _brackets          = s->_brackets;
@@ -1031,7 +989,7 @@ void Staff::initFromStaffType(const StaffType* staffType)
             staffType = StaffType::getDefaultPreset(StaffGroup::STANDARD);
 
       // use selected staff type
-      setStaffType(staffType);
+      setStaffType(0, staffType);
       }
 
 //---------------------------------------------------------
@@ -1058,19 +1016,19 @@ bool Staff::show() const
 
 bool Staff::genKeySig()
       {
-      if (_staffType.group() == StaffGroup::TAB)
+      if (staffType(0)->group() == StaffGroup::TAB)
             return false;
       else
-            return _staffType.genKeysig();
+            return staffType(0)->genKeysig();
       }
 
 //---------------------------------------------------------
 //   showLedgerLines
 //---------------------------------------------------------
 
-bool Staff::showLedgerLines()
+bool Staff::showLedgerLines(int tick)
       {
-      return _staffType.showLedgerLines();
+      return staffType(tick)->showLedgerLines();
       }
 
 //---------------------------------------------------------
@@ -1178,15 +1136,6 @@ QList<Staff*> Staff::staffList() const
       }
 
 //---------------------------------------------------------
-//   setBarLineTo
-//---------------------------------------------------------
-
-void Staff::setBarLineTo(int val)
-      {
-      _barLineTo = val;
-      }
-
-//---------------------------------------------------------
 //   rstaff
 //---------------------------------------------------------
 
@@ -1217,6 +1166,20 @@ QVariant Staff::getProperty(P_ID id) const
                   return color();
             case P_ID::SMALL:
                   return small();
+            case P_ID::PLAYBACK_VOICE1:
+                  return playbackVoice(0);
+            case P_ID::PLAYBACK_VOICE2:
+                  return playbackVoice(1);
+            case P_ID::PLAYBACK_VOICE3:
+                  return playbackVoice(2);
+            case P_ID::PLAYBACK_VOICE4:
+                  return playbackVoice(3);
+            case P_ID::BARLINE_SPAN:
+                  return barLineSpan();
+            case P_ID::BARLINE_SPAN_FROM:
+                  return barLineFrom();
+            case P_ID::BARLINE_SPAN_TO:
+                  return barLineTo();
             default:
                   qDebug("Staff::getProperty: unhandled id");
                   return QVariant();
@@ -1245,6 +1208,27 @@ bool Staff::setProperty(P_ID id, const QVariant& v)
                   scaleChanged(oldVal, mag());
                   }
                   break;
+            case P_ID::PLAYBACK_VOICE1:
+                  setPlaybackVoice(0, v.toBool());
+                  break;
+            case P_ID::PLAYBACK_VOICE2:
+                  setPlaybackVoice(1, v.toBool());
+                  break;
+            case P_ID::PLAYBACK_VOICE3:
+                  setPlaybackVoice(2, v.toBool());
+                  break;
+            case P_ID::PLAYBACK_VOICE4:
+                  setPlaybackVoice(3, v.toBool());
+                  break;
+            case P_ID::BARLINE_SPAN:
+                  setBarLineSpan(v.toInt());
+                  break;
+            case P_ID::BARLINE_SPAN_FROM:
+                  setBarLineFrom(v.toInt());
+                  break;
+            case P_ID::BARLINE_SPAN_TO:
+                  setBarLineTo(v.toInt());
+                  break;
             default:
                   qDebug("Staff::setProperty: unhandled id");
                   break;
@@ -1266,6 +1250,11 @@ QVariant Staff::propertyDefault(P_ID id) const
                   return QColor(Qt::black);
             case P_ID::SMALL:
                   return false;
+            case P_ID::PLAYBACK_VOICE1:
+            case P_ID::PLAYBACK_VOICE2:
+            case P_ID::PLAYBACK_VOICE3:
+            case P_ID::PLAYBACK_VOICE4:
+                  return true;
             default:
                   return QVariant();
             }
@@ -1296,5 +1285,51 @@ void Staff::scaleChanged(double oldVal, double newVal)
                   }
             }
       }
+
+bool Staff::isPitchedStaff(int tick) const      { return staffType(tick)->group() == StaffGroup::STANDARD; }
+bool Staff::isTabStaff(int tick) const          { return staffType(tick)->group() == StaffGroup::TAB; }
+bool Staff::isDrumStaff(int tick) const         { return staffType(tick)->group() == StaffGroup::PERCUSSION; }
+
+//---------------------------------------------------------
+//   lines
+//---------------------------------------------------------
+
+int Staff::lines(int tick) const
+      {
+      return staffType(tick)->lines();
+      }
+
+//---------------------------------------------------------
+//   setLines
+//---------------------------------------------------------
+
+void Staff::setLines(int tick, int val)
+      {
+      if (val == lines(tick))
+            return;
+      staffType(tick)->setLines(val);     // TODO: make undoable
+      }
+
+//---------------------------------------------------------
+//   lineDistance
+//    distance between staff lines
+//---------------------------------------------------------
+
+qreal Staff::lineDistance(int tick) const
+      {
+      return staffType(tick)->lineDistance().val();
+      }
+
+//---------------------------------------------------------
+//   logicalLineDistance
+//    distance between logical (note) lines
+//---------------------------------------------------------
+
+qreal Staff::logicalLineDistance(int tick) const
+      {
+      return scaleNotesToLines(tick) ? staffType(tick)->lineDistance().val() : 1.0;
+      }
+
+
 }
 

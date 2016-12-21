@@ -21,7 +21,7 @@
 #ifndef __SELECTDIALOG_H__
 #define __SELECTDIALOG_H__
 
-#include "ui_select.h"
+#include "ui_selectdialog.h"
 
 namespace Ms {
 
@@ -36,6 +36,7 @@ class SelectDialog : public QDialog, Ui::SelectDialog {
       Q_OBJECT
       const Element* e;
 
+      virtual void hideEvent(QHideEvent*);
    public:
       SelectDialog(const Element* e, QWidget* parent);
       void setPattern(ElementPattern* p);

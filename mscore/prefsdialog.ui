@@ -111,9 +111,6 @@
          <property name="title">
           <string>Program Start</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <layout class="QGridLayout" name="gridLayout">
           <item row="0" column="0">
            <widget class="QRadioButton" name="emptySession">
@@ -165,7 +162,11 @@
                <string>Opens a file dialog for selecting the starting score</string>
               </property>
               <property name="text">
-               <string/>
+               <string notr="true"/>
+              </property>
+              <property name="icon">
+               <iconset resource="musescore.qrc">
+                <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
               </property>
              </widget>
             </item>
@@ -242,9 +243,6 @@
          <property name="title">
           <string>OSC Remote Control</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
@@ -256,9 +254,6 @@
            <widget class="QLabel" name="label">
             <property name="text">
              <string extracomment="The UDP port number on which the MuseScore OSC server will listen on">Port number:</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
@@ -301,9 +296,6 @@
          </property>
          <property name="title">
           <string>Auto Save</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -372,9 +364,6 @@
          <property name="title">
           <string>Language</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <property name="checkable">
           <bool>false</bool>
          </property>
@@ -385,38 +374,14 @@
              <string>Select language</string>
             </property>
             <property name="accessibleDescription">
-             <string>The language will be changed once you restart MuseScore.</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="restartWarningLanguage">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="font">
-             <font>
-              <italic>true</italic>
-             </font>
-            </property>
-            <property name="text">
-             <string>The language will be changed once you restart MuseScore.</string>
-            </property>
-            <property name="textFormat">
-             <enum>Qt::PlainText</enum>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
+             <string>Select the language of the user interface</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="updateTranslation">
             <property name="text">
-             <string>Update translations</string>
+             <string>Update Translations</string>
             </property>
            </widget>
           </item>
@@ -427,9 +392,6 @@
         <widget class="QGroupBox" name="groupBox_6">
          <property name="title">
           <string>Folders</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <layout class="QGridLayout">
           <property name="leftMargin">
@@ -468,9 +430,6 @@
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
-            <property name="indent">
-             <number>5</number>
-            </property>
            </widget>
           </item>
           <item row="0" column="0">
@@ -481,9 +440,6 @@
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
-            <property name="indent">
-             <number>5</number>
-            </property>
            </widget>
           </item>
           <item row="1" column="0">
@@ -493,9 +449,6 @@
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-            <property name="indent">
-             <number>5</number>
             </property>
            </widget>
           </item>
@@ -517,9 +470,6 @@
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
-            <property name="indent">
-             <number>5</number>
-            </property>
            </widget>
           </item>
           <item row="0" column="2">
@@ -534,7 +484,11 @@
              <string>Opens a folder dialog for selecting the score folder</string>
             </property>
             <property name="text">
-             <string/>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
             </property>
            </widget>
           </item>
@@ -550,7 +504,11 @@
              <string>Opens a folder dialog for selecting the style folder</string>
             </property>
             <property name="text">
-             <string/>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
             </property>
            </widget>
           </item>
@@ -561,9 +519,6 @@
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-            <property name="indent">
-             <number>5</number>
             </property>
            </widget>
           </item>
@@ -609,7 +564,11 @@
              <string>Opens a folder dialog for selecting the plugin folder</string>
             </property>
             <property name="text">
-             <string/>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
             </property>
            </widget>
           </item>
@@ -620,9 +579,6 @@
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-            <property name="indent">
-             <number>5</number>
             </property>
            </widget>
           </item>
@@ -648,7 +604,11 @@
              <string>Opens a folder dialog for selecting the template folder</string>
             </property>
             <property name="text">
-             <string/>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
             </property>
            </widget>
           </item>
@@ -666,6 +626,10 @@
             <property name="text">
              <string/>
             </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
+            </property>
            </widget>
           </item>
           <item row="4" column="2">
@@ -680,7 +644,11 @@
              <string>Opens a dialog for configuring the SoundFont folders</string>
             </property>
             <property name="text">
-             <string/>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/edit.svg</normaloff>:/data/icons/edit.svg</iconset>
             </property>
            </widget>
           </item>
@@ -690,10 +658,10 @@
        <item row="1" column="1" rowspan="2">
         <widget class="QGroupBox" name="groupBox_12">
          <property name="title">
-          <string>Style</string>
+          <string>Theme</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_9">
-          <item row="0" column="0">
+          <item row="0" column="0" colspan="2">
            <widget class="QComboBox" name="styleName">
             <property name="accessibleName">
              <string>Select style</string>
@@ -708,29 +676,29 @@
               <string>Light</string>
              </property>
             </item>
+            <item>
+             <property name="text">
+              <string>Dark Fusion</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Light Fusion</string>
+             </property>
+            </item>
            </widget>
           </item>
-          <item row="2" column="2">
-           <widget class="QSpinBox" name="iconHeight">
+          <item row="0" column="2" colspan="2">
+           <widget class="QCheckBox" name="animations">
             <property name="accessibleName">
-             <string>Icon Height</string>
+             <string>Animations</string>
             </property>
-            <property name="minimum">
-             <number>5</number>
-            </property>
-            <property name="value">
-             <number>20</number>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_26">
             <property name="text">
-             <string>Icon size:</string>
+             <string>Animations</string>
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
+          <item row="1" column="1">
            <widget class="QSpinBox" name="iconWidth">
             <property name="accessibleName">
              <string>Icon Width</string>
@@ -743,13 +711,30 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="QCheckBox" name="animations">
-            <property name="accessibleName">
-             <string>Animations</string>
-            </property>
+          <item row="1" column="2">
+           <widget class="QLabel" name="iconHeigthLabel">
             <property name="text">
-             <string>Animations</string>
+             <string>Icon height:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="iconWidthLabel">
+            <property name="text">
+             <string>Icon width:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QSpinBox" name="iconHeight">
+            <property name="accessibleName">
+             <string>Icon Height</string>
+            </property>
+            <property name="minimum">
+             <number>5</number>
+            </property>
+            <property name="value">
+             <number>20</number>
             </property>
            </widget>
           </item>
@@ -802,9 +787,6 @@
          <property name="title">
           <string>Background</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <layout class="QGridLayout">
           <property name="leftMargin">
            <number>9</number>
@@ -827,7 +809,7 @@
              <string>Background Color</string>
             </property>
             <property name="text">
-             <string>Color</string>
+             <string>Color:</string>
             </property>
            </widget>
           </item>
@@ -854,7 +836,7 @@
                <string>Background Wallpaper</string>
               </property>
               <property name="text">
-               <string>Wallpaper</string>
+               <string>Wallpaper:</string>
               </property>
              </widget>
             </item>
@@ -886,7 +868,11 @@
                <string>Opens a file dialog for selecting the wallpaper file</string>
               </property>
               <property name="text">
-               <string/>
+               <string notr="true"/>
+              </property>
+              <property name="icon">
+               <iconset resource="musescore.qrc">
+                <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
               </property>
              </widget>
             </item>
@@ -929,9 +915,6 @@
          <property name="title">
           <string>Paper</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <layout class="QGridLayout">
           <property name="leftMargin">
            <number>9</number>
@@ -971,7 +954,7 @@
                <string>Paper Wallpaper</string>
               </property>
               <property name="text">
-               <string>Wallpaper</string>
+               <string>Wallpaper:</string>
               </property>
              </widget>
             </item>
@@ -1003,7 +986,11 @@
                <string>Opens a file dialog for selecting the wallpaper file</string>
               </property>
               <property name="text">
-               <string/>
+               <string notr="true"/>
+              </property>
+              <property name="icon">
+               <iconset resource="musescore.qrc">
+                <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
               </property>
              </widget>
             </item>
@@ -1015,7 +1002,7 @@
              <string>Paper Color</string>
             </property>
             <property name="text">
-             <string>Color</string>
+             <string>Color:</string>
             </property>
            </widget>
           </item>
@@ -1078,9 +1065,6 @@
         <widget class="QGroupBox" name="groupBox_4">
          <property name="title">
           <string>Miscellaneous</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <layout class="QGridLayout">
           <item row="0" column="0">
@@ -1169,8 +1153,8 @@
          <property name="title">
           <string>Note Input</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_2">
-          <item>
+         <layout class="QGridLayout" name="gridLayout_13">
+          <item row="0" column="0">
            <widget class="QCheckBox" name="enableMidiInput">
             <property name="accessibleName">
              <string>Enable MIDI Input</string>
@@ -1180,7 +1164,7 @@
             </property>
            </widget>
           </item>
-          <item>
+          <item row="1" column="0">
            <widget class="QCheckBox" name="warnPitchRange">
             <property name="accessibleName">
              <string>Color notes outside of usable pitch range</string>
@@ -1189,6 +1173,48 @@
              <string>Color notes outside of usable pitch range</string>
             </property>
            </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_56">
+            <property name="text">
+             <string>Delay between notes in automatic Real-time mode:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QSpinBox" name="realtimeDelay">
+            <property name="accessibleName">
+             <string>Delay between notes in automatic Real-time mode</string>
+            </property>
+            <property name="suffix">
+             <string>ms</string>
+            </property>
+            <property name="minimum">
+             <number>300</number>
+            </property>
+            <property name="maximum">
+             <number>3000</number>
+            </property>
+            <property name="singleStep">
+             <number>10</number>
+            </property>
+            <property name="value">
+             <number>750</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2">
+           <spacer name="horizontalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
           </item>
          </layout>
         </widget>
@@ -1277,9 +1303,6 @@
          <property name="title">
           <string>MIDI Remote Control</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
@@ -1321,7 +1344,12 @@
              <string>Rewind is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1337,7 +1365,12 @@
              <string>Rewind record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1360,7 +1393,12 @@
              <string>Is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1376,7 +1414,12 @@
              <string>Toggle play record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1422,7 +1465,12 @@
              <string>Whole note is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1435,7 +1483,12 @@
              <string>Half note is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1448,7 +1501,12 @@
              <string>Whole note record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1461,7 +1519,12 @@
              <string>Half note record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1504,7 +1567,12 @@
              <string>Rest is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1517,7 +1585,12 @@
              <string>Quarter note is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1530,7 +1603,12 @@
              <string>Quarter note record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1543,7 +1621,12 @@
              <string>Eighth note is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1556,7 +1639,12 @@
              <string>Eighth note record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1577,10 +1665,20 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="12">
+          <item row="4" column="8">
            <widget class="QLabel" name="label_47">
             <property name="text">
              <string>Tie</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="12">
+           <widget class="QLabel" name="label_54">
+            <property name="text">
+             <string>Real-time Advance</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1596,7 +1694,12 @@
              <string>Augmentation dot is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1609,7 +1712,12 @@
              <string>Augmentation dot record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1622,7 +1730,12 @@
              <string>Double augmentation dot is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1635,11 +1748,16 @@
              <string>Double augmentation dot record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
-          <item row="2" column="13">
+          <item row="4" column="9">
            <widget class="Ms::GreendotButton" name="rca12">
             <property name="focusPolicy">
              <enum>Qt::StrongFocus</enum>
@@ -1648,11 +1766,16 @@
              <string>Tie is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
-          <item row="2" column="14">
+          <item row="4" column="10">
            <widget class="Ms::RecordButton" name="rcr12">
             <property name="focusPolicy">
              <enum>Qt::StrongFocus</enum>
@@ -1661,7 +1784,48 @@
              <string>Tie record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="13">
+           <widget class="Ms::GreendotButton" name="realtimeAdvanceActive">
+            <property name="focusPolicy">
+             <enum>Qt::StrongFocus</enum>
+            </property>
+            <property name="accessibleName">
+             <string>Real-time Advance is active</string>
+            </property>
+            <property name="text">
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="14">
+           <widget class="Ms::RecordButton" name="recordRealtimeAdvance">
+            <property name="focusPolicy">
+             <enum>Qt::StrongFocus</enum>
+            </property>
+            <property name="accessibleName">
+             <string>Real-time Advance record</string>
+            </property>
+            <property name="text">
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1674,7 +1838,12 @@
              <string>Rest record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1749,7 +1918,12 @@
              <string>Play is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1765,7 +1939,12 @@
              <string>Stop is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1781,7 +1960,12 @@
              <string>Play record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1797,7 +1981,12 @@
              <string>Stop record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1823,7 +2012,12 @@
              <string>Note input is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1839,7 +2033,12 @@
              <string>Note input record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1862,7 +2061,12 @@
              <string>16th note is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1875,7 +2079,12 @@
              <string>16th note record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1888,7 +2097,12 @@
              <string>32nd note is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1901,7 +2115,12 @@
              <string>32nd note record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1934,7 +2153,12 @@
              <string>64th note is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1947,7 +2171,12 @@
              <string>64th note record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1960,7 +2189,12 @@
              <string>Undo is active</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/darkgreendot.svg</normaloff>
+              <normalon>:/data/greendot.svg</normalon>:/data/darkgreendot.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1973,7 +2207,12 @@
              <string>Undo record</string>
             </property>
             <property name="text">
-             <string notr="true">...</string>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/recordOff.svg</normaloff>
+              <normalon>:/data/recordOn.svg</normalon>:/data/recordOff.svg</iconset>
             </property>
            </widget>
           </item>
@@ -1984,6 +2223,23 @@
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="12">
+           <widget class="QLabel" name="label_55">
+            <property name="text">
+             <string>Advance on release?</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="13" alignment="Qt::AlignHCenter|Qt::AlignVCenter">
+           <widget class="QCheckBox" name="advanceOnRelease">
+            <property name="accessibleName">
+             <string>Advance on release?</string>
             </property>
            </widget>
           </item>
@@ -2027,9 +2283,6 @@
         <widget class="QGroupBox" name="groupBox_19">
          <property name="title">
           <string>View</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_7">
           <item row="0" column="1">
@@ -2098,9 +2351,6 @@
          <property name="title">
           <string>Default Files</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <layout class="QGridLayout" name="_23">
           <property name="leftMargin">
            <number>3</number>
@@ -2143,6 +2393,10 @@
             </property>
             <property name="text">
              <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
             </property>
            </widget>
           </item>
@@ -2198,7 +2452,11 @@
              <string>Opens a file dialog for selecting a style file</string>
             </property>
             <property name="text">
-             <string/>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
             </property>
            </widget>
           </item>
@@ -2234,7 +2492,11 @@
              <string>Opens a file dialog for selecting a style file for part</string>
             </property>
             <property name="text">
-             <string/>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
             </property>
            </widget>
           </item>
@@ -2260,7 +2522,11 @@
              <string>Opens a file dialog for selecting a instrument list file</string>
             </property>
             <property name="text">
-             <string/>
+             <string notr="true"/>
+            </property>
+            <property name="icon">
+             <iconset resource="musescore.qrc">
+              <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
             </property>
            </widget>
           </item>
@@ -2301,11 +2567,17 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>30</height>
+          </size>
+         </property>
          <property name="title">
           <string>PulseAudio</string>
          </property>
          <property name="flat">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -2325,9 +2597,6 @@
          </property>
          <property name="title">
           <string>PortAudio</string>
-         </property>
-         <property name="flat">
-          <bool>true</bool>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -2443,9 +2712,6 @@
          </property>
          <property name="title">
           <string>ALSA audio</string>
-         </property>
-         <property name="flat">
-          <bool>true</bool>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -2619,7 +2885,7 @@
              <string>Device</string>
             </property>
             <property name="text">
-             <string>default</string>
+             <string notr="true">default</string>
             </property>
            </widget>
           </item>
@@ -2639,9 +2905,6 @@
          </property>
          <property name="title">
           <string>JACK audio server</string>
-         </property>
-         <property name="flat">
-          <bool>true</bool>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -2821,17 +3084,14 @@
          <property name="title">
           <string>Style Used for Import</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <layout class="QVBoxLayout">
           <item>
-           <widget class="QRadioButton" name="useImportBuildinStyle">
+           <widget class="QRadioButton" name="useImportBuiltinStyle">
             <property name="accessibleName">
-             <string>Build in style</string>
+             <string>Built-in style</string>
             </property>
             <property name="text">
-             <string>Built in style</string>
+             <string>Built-in style</string>
             </property>
            </widget>
           </item>
@@ -2866,7 +3126,11 @@
                <string>Opens a file dialog for selecting a style file</string>
               </property>
               <property name="text">
-               <string>Browse...</string>
+               <string notr="true"/>
+              </property>
+              <property name="icon">
+               <iconset resource="musescore.qrc">
+                <normaloff>:/data/icons/document-open.svg</normaloff>:/data/icons/document-open.svg</iconset>
               </property>
              </widget>
             </item>
@@ -2879,9 +3143,6 @@
         <widget class="QGroupBox" name="groupBox_20">
          <property name="title">
           <string>Character Set Used When Importing Binary Files</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_12">
           <item>
@@ -2938,9 +3199,6 @@
          </property>
          <property name="title">
           <string>MusicXML</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_13">
           <item>
@@ -3083,9 +3341,6 @@
          <property name="title">
           <string>PNG/SVG</string>
          </property>
-         <property name="flat">
-          <bool>false</bool>
-         </property>
          <layout class="QGridLayout" name="gridLayout_8">
           <item row="0" column="0">
            <widget class="QLabel" name="label_4">
@@ -3152,9 +3407,6 @@
          </property>
          <property name="title">
           <string>MIDI</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
@@ -3242,9 +3494,6 @@
          </property>
          <property name="title">
           <string>MusicXML</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_14">
           <item>
@@ -3474,7 +3723,7 @@
             <string/>
            </property>
            <property name="placeholderText">
-            <string>Filter</string>
+            <string>Search</string>
            </property>
           </widget>
          </item>
@@ -3523,9 +3772,6 @@
          </property>
          <property name="title">
           <string>Automatic Update Check</string>
-         </property>
-         <property name="flat">
-          <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_6">
           <item row="1" column="0">
@@ -3676,6 +3922,9 @@
   <tabstop>rcr11</tabstop>
   <tabstop>rca12</tabstop>
   <tabstop>rcr12</tabstop>
+  <tabstop>realtimeAdvanceActive</tabstop>
+  <tabstop>recordRealtimeAdvance</tabstop>
+  <tabstop>advanceOnRelease</tabstop>
   <tabstop>midiRemoteControlClear</tabstop>
   <tabstop>instrumentList1</tabstop>
   <tabstop>instrumentList1Button</tabstop>
@@ -3702,7 +3951,7 @@
   <tabstop>rememberLastMidiConnections</tabstop>
   <tabstop>useJackTransport</tabstop>
   <tabstop>becomeTimebaseMaster</tabstop>
-  <tabstop>useImportBuildinStyle</tabstop>
+  <tabstop>useImportBuiltinStyle</tabstop>
   <tabstop>useImportStyleFile</tabstop>
   <tabstop>importStyleFile</tabstop>
   <tabstop>styleFileButton</tabstop>
@@ -3728,6 +3977,8 @@
   <tabstop>drawAntialiased</tabstop>
   <tabstop>proximity</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="musescore.qrc"/>
+ </resources>
  <connections/>
 </ui>

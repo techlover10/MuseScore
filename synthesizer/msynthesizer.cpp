@@ -68,7 +68,7 @@ void MasterSynthesizer::init()
             setState(defaultState);
             return;
             }
-      XmlReader e(&f);
+      XmlReader e(0, &f);
       while (e.readNextStartElement()) {
             if (e.name() == "Synthesizer")
                   state.read(e);
@@ -86,8 +86,11 @@ MasterSynthesizer::~MasterSynthesizer()
       {
       for (Synthesizer* s : _synthesizer)
             delete s;
-      for (int i = 0; i < MAX_EFFECTS; ++i)
-            delete _effect[i];
+      for (int i = 0; i < MAX_EFFECTS; ++i) {
+            for (Effect* e : _effectList[i])
+                  delete e;
+            // delete _effect[i];   // _effect takes from _effectList
+            }
       }
 
 //---------------------------------------------------------

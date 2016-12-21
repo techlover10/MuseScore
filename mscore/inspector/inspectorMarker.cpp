@@ -22,23 +22,21 @@ namespace Ms {
 //---------------------------------------------------------
 
 InspectorMarker::InspectorMarker(QWidget* parent)
-   : InspectorBase(parent)
+   : InspectorElementBase(parent)
       {
-      b.setupUi(addWidget());
       t.setupUi(addWidget());
       m.setupUi(addWidget());
 
-      iList = {
-            { P_ID::COLOR,              0, false, b.color,      b.resetColor      },
-            { P_ID::VISIBLE,            0, false, b.visible,    b.resetVisible    },
-            { P_ID::USER_OFF,           0, false, b.offsetX,    b.resetX          },
-            { P_ID::USER_OFF,           1, false, b.offsetY,    b.resetY          },
-            { P_ID::TEXT_STYLE_TYPE,    0, 0,     t.style,      t.resetStyle      },
-            { P_ID::MARKER_TYPE,        0, false, m.markerType, m.resetMarkerType },
-            { P_ID::LABEL,              0, false, m.jumpLabel,  m.resetJumpLabel  }
+      const std::vector<InspectorItem> iiList = {
+            { P_ID::TEXT_STYLE_TYPE,    0, 0,     t.style,      t.resetStyle },
+            { P_ID::MARKER_TYPE,        0, false, m.markerType, 0            },
+            { P_ID::LABEL,              0, false, m.jumpLabel,  0            }
             };
-
-      mapSignals();
+      const std::vector<InspectorPanel> ppList = {
+            { t.title, t.panel },
+            { m.title, m.panel }
+            };
+      mapSignals(iiList, ppList);
       connect(t.resetToStyle, SIGNAL(clicked()), SLOT(resetToStyle()));
       }
 
@@ -60,7 +58,7 @@ void InspectorMarker::setElement()
                   t.style->addItem(qApp->translate("TextStyle",ts.at(i).name().toUtf8().data()), i);
             }
       t.style->blockSignals(false);
-      InspectorBase::setElement();
+      InspectorElementBase::setElement();
       }
 
 }

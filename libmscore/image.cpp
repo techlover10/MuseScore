@@ -43,10 +43,6 @@ Image::Image(Score* s)
       _autoScale       = defaultAutoScale;
       _sizeIsSpatium   = defaultSizeIsSpatium;
       _linkIsValid     = false;
-      // set default Z order high so image is drawn on top of everything else
-      // but not above MEASURE, or it won't be selectable while on staff
-      // use of transparent background allows image to coexist with staff and other elements
-      setZ(int(Element::Type::MEASURE) * 100 - 1);
       }
 
 Image::Image(const Image& img)
@@ -305,7 +301,7 @@ void Image::draw(QPainter* painter) const
 //   write
 //---------------------------------------------------------
 
-void Image::write(Xml& xml) const
+void Image::write(XmlWriter& xml) const
       {
       // attempt to convert the _linkPath to a path relative to the score
       //

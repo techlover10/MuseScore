@@ -23,6 +23,7 @@
 #include "sym.h"
 #include "xml.h"
 #include "undo.h"
+#include "mscore.h"
 
 namespace Ms {
 
@@ -45,7 +46,8 @@ bool CharFormat::operator==(const CharFormat& cf) const
          || cf.underline() != underline()
          || cf.preedit() != preedit()
          || cf.valign() != valign()
-         || cf.fontSize() != fontSize())
+         || cf.fontSize() != fontSize()
+         )
             return false;
       if (type() == CharFormatType::TEXT)
             return cf.fontFamily() == fontFamily();
@@ -197,7 +199,9 @@ bool TextFragment::operator ==(const TextFragment& f) const
 
 void TextFragment::draw(QPainter* p, const Text* t) const
       {
-      p->setFont(font(t));
+      QFont f(font(t));
+      f.setPointSizeF(f.pointSizeF() * MScore::pixelRatio);
+      p->setFont(f);
       p->drawText(pos, text);
       }
 
@@ -210,8 +214,11 @@ QFont TextFragment::font(const Text* t) const
       QFont font;
 
       qreal m = format.fontSize();
+
       if (t->textStyle().sizeIsSpatiumDependent())
             m *= t->spatium() / SPATIUM20;
+      if (format.valign() != VerticalAlignment::AlignNormal)
+            m *= subScriptSize;
 
       font.setUnderline(format.underline() || format.preedit());
       if (format.type() == CharFormatType::TEXT) {
@@ -230,10 +237,8 @@ QFont TextFragment::font(const Text* t) const
             //font.setStyleStrategy(QFont::NoFontMerging);
             font.setHintingPreference(QFont::PreferVerticalHinting);
             }
-      if (format.valign() != VerticalAlignment::AlignNormal)
-            m *= subScriptSize;
 
-      font.setPixelSize(lrint(m));
+      font.setPointSizeF(m);
       return font;
       }
 
@@ -289,14 +294,14 @@ void TextBlock::layout(Text* t)
                   }
             }
       if (_text.empty()) {
-            QFontMetricsF fm(t->textStyle().fontPx(t->spatium()));
+            QFontMetricsF fm = t->textStyle().fontMetrics(t->spatium());
             _bbox.setRect(0.0, -fm.ascent(), 1.0, fm.descent());
             _lineSpacing = fm.lineSpacing();
             }
       else {
             for (TextFragment& f : _text) {
                   f.pos.setX(x);
-                  QFontMetricsF fm(f.font(t));
+                  QFontMetricsF fm(f.font(t), MScore::paintDevice());
                   if (f.format.valign() != VerticalAlignment::AlignNormal) {
                         qreal voffset = fm.xHeight() / subScriptSize;   // use original height
                         if (f.format.valign() == VerticalAlignment::AlignSubScript)
@@ -307,19 +312,8 @@ void TextBlock::layout(Text* t)
                         }
                   else
                         f.pos.setY(0.0);
-                  qreal w = fm.width(f.text);
-                  QRectF r;
-                  if (f.format.type() == CharFormatType::SYMBOL)
-                        r = fm.tightBoundingRect(f.text);
-                  else
-                        r = fm.boundingRect(f.text);
-
-                  // for whatever reason the boundingRect() is different
-                  // on second doLayout() (paint() ?)
-                  r.setX(0);        //HACK
-                  r.setWidth(w);
-
-                  _bbox |= r.translated(f.pos);
+                  qreal w  = fm.width(f.text);
+                  _bbox   |= fm.tightBoundingRect(f.text).translated(f.pos);
                   x += w;
                   // _lineSpacing = (_lineSpacing == 0 || fm.lineSpacing() == 0) ? qMax(_lineSpacing, fm.lineSpacing()) : qMin(_lineSpacing, fm.lineSpacing());
                   _lineSpacing = qMax(_lineSpacing, fm.lineSpacing());
@@ -348,7 +342,7 @@ qreal TextBlock::xpos(int column, const Text* t) const
       for (const TextFragment& f : _text) {
             if (column == col)
                   return f.pos.x();
-            QFontMetricsF fm(f.font(t));
+            QFontMetricsF fm(f.font(t), MScore::paintDevice());
             int idx = 0;
             for (const QChar& c : f.text) {
                   ++idx;
@@ -443,7 +437,7 @@ int TextBlock::column(qreal x, Text* t) const
                   ++idx;
                   if (c.isHighSurrogate())
                         continue;
-                  QFontMetricsF fm(f.font(t));
+                  QFontMetricsF fm(f.font(t), MScore::paintDevice());
                   qreal xo = fm.width(f.text.left(idx));
                   if (x <= f.pos.x() + px + (xo-px)*.5)
                         return col;
@@ -818,7 +812,7 @@ QString TextBlock::text(int col1, int len) const
                         if (c.isHighSurrogate())
                               continue;
                         if (col >= col1 && (len < 0 || ((col-col1) < len)))
-                              s += Xml::xmlString(c.unicode());
+                              s += XmlWriter::xmlString(c.unicode());
                         ++col;
                         }
                   }
@@ -915,7 +909,8 @@ void Text::draw(QPainter* p) const
       if (textStyle().hasFrame()) {
             if (textStyle().frameWidth().val() != 0.0) {
                   QColor fColor = frameColor();
-                  QPen pen(fColor, textStyle().frameWidth().val() * spatium());
+                  QPen pen(fColor, textStyle().frameWidth().val() * spatium(), Qt::SolidLine,
+                     Qt::SquareCap, Qt::MiterJoin);
                   p->setPen(pen);
                   }
             else
@@ -923,12 +918,12 @@ void Text::draw(QPainter* p) const
             QColor bg(textStyle().backgroundColor());
             p->setBrush(bg.alpha() ? QBrush(bg) : Qt::NoBrush);
             if (textStyle().circle())
-                  p->drawArc(frame, 0, 5760);
+                  p->drawEllipse(frame);
             else {
-                  int r2 = textStyle().frameRound() * lrint((frame.width() / frame.height()));
+                  int r2 = textStyle().frameRound();
                   if (r2 > 99)
                         r2 = 99;
-                  p->drawRoundRect(frame, textStyle().frameRound(), r2);
+                  p->drawRoundedRect(frame, textStyle().frameRound(), r2);
                   }
             }
       p->setBrush(Qt::NoBrush);
@@ -995,12 +990,12 @@ QRectF Text::cursorRect() const
       if (fragment) {
             font = fragment->font(this);
 //TODOxxxx            if (font.family() == score()->scoreFont()->font().family())
-//                  font = _textStyle.fontPx(spatium());
+//                  font = _textStyle.font(spatium());
             }
       else
-            font = _textStyle.fontPx(spatium());
+            font = _textStyle.font(spatium());
 
-      qreal ascent = QFontMetricsF(font).ascent() * .7;
+      qreal ascent = QFontMetricsF(font, MScore::paintDevice()).ascent() * .7;
       qreal h = ascent;       // lineSpacing();
       qreal x = tline.xpos(_cursor->column(), this);
       qreal y = tline.y();
@@ -1265,6 +1260,8 @@ void Text::layout1()
                         h  = parent()->height();
                   }
             }
+      else
+            setPos(QPointF());
 
       if (textStyle().align() & AlignmentFlags::BOTTOM)
             yoff += h - bb.bottom();
@@ -1294,6 +1291,24 @@ void Text::layout1()
 void Text::layoutFrame()
       {
       frame = bbox();
+      if (textStyle().square()) {
+#if 0
+            // "real" square
+            if (frame.width() > frame.height()) {
+                  qreal w = frame.width() - frame.height();
+                  frame.adjust(0.0, -w * .5, 0.0, w * .5);
+                  }
+            else {
+                  qreal w = frame.height() - frame.width();
+                  frame.adjust(-w * .5, 0.0, w * .5, 0.0);
+                  }
+#endif
+            // make sure width >= height
+            if (frame.height() > frame.width()) {
+                  qreal w = frame.height() - frame.width();
+                  frame.adjust(-w * .5, 0.0, w * .5, 0.0);
+                  }
+            }
       if (textStyle().circle()) {
             if (frame.width() > frame.height()) {
                   frame.setY(frame.y() + (frame.width() - frame.height()) * -.5);
@@ -1317,7 +1332,7 @@ void Text::layoutFrame()
 
 qreal Text::lineSpacing() const
       {
-      return QFontMetricsF(textStyle().fontPx(spatium())).lineSpacing();
+      return textStyle().fontMetrics(spatium()).lineSpacing();
       }
 
 //---------------------------------------------------------
@@ -1326,7 +1341,7 @@ qreal Text::lineSpacing() const
 
 qreal Text::lineHeight() const
       {
-      return QFontMetricsF(textStyle().fontPx(spatium())).height();
+      return textStyle().fontMetrics(spatium()).height();
       }
 
 //---------------------------------------------------------
@@ -1335,7 +1350,7 @@ qreal Text::lineHeight() const
 
 qreal Text::baseLine() const
       {
-      return QFontMetricsF(textStyle().fontPx(spatium())).ascent();
+      return textStyle().fontMetrics(spatium()).ascent();
       }
 
 //---------------------------------------------------------
@@ -1456,7 +1471,7 @@ void Text::genText()
                               }
                         }
                   if (format.type() == CharFormatType::TEXT)
-                        _text += Xml::xmlString(f.text);
+                        _text += XmlWriter::xmlString(f.text);
                   else {
                         for (SymId id : f.ids)
                               _text += QString("<sym>%1</sym>").arg(Sym::id2name(id));
@@ -2193,7 +2208,7 @@ void Text::deleteSelectedText()
 //   write
 //---------------------------------------------------------
 
-void Text::write(Xml& xml) const
+void Text::write(XmlWriter& xml) const
       {
       xml.stag(name());
       writeProperties(xml, true, true);
@@ -2216,7 +2231,7 @@ void Text::read(XmlReader& e)
 //   writeProperties
 //---------------------------------------------------------
 
-void Text::writeProperties(Xml& xml, bool writeText, bool writeStyle) const
+void Text::writeProperties(XmlWriter& xml, bool writeText, bool writeStyle) const
       {
       Element::writeProperties(xml);
       if (writeStyle) {
@@ -2256,7 +2271,7 @@ bool Text::readProperties(XmlReader& e)
                         case 11: st = TextStyleType::INSTRUMENT_EXCERPT; break;
 
                         case 12: st = TextStyleType::DYNAMICS;  break;
-                        case 13: st = TextStyleType::TECHNIQUE;   break;
+                        case 13: st = TextStyleType::STAFF;     break; // TextStyleType::TECHNIQUE
                         case 14: st = TextStyleType::TEMPO;     break;
                         case 15: st = TextStyleType::METRONOME; break;
                         case 16: st = TextStyleType::FOOTER;    break;  // TextStyleType::COPYRIGHT
@@ -2270,7 +2285,7 @@ bool Text::readProperties(XmlReader& e)
                         case 23: st = TextStyleType::STAFF;          break;
                         case 24: st = TextStyleType::HARMONY;        break;
                         case 25: st = TextStyleType::REHEARSAL_MARK; break;
-                        case 26: st = TextStyleType::REPEAT;         break;
+                        case 26: st = TextStyleType::REPEAT_RIGHT;   break;
                         case 27: st = TextStyleType::VOLTA;          break;
                         case 28: st = TextStyleType::FRAME;          break;
                         case 29: st = TextStyleType::TEXTLINE;       break;
@@ -2278,7 +2293,7 @@ bool Text::readProperties(XmlReader& e)
                         case 31: st = TextStyleType::STRING_NUMBER;  break;
 
                         case 32: st = TextStyleType::OTTAVA;  break;
-                        case 33: st = TextStyleType::BENCH;   break;
+                        case 33: st = TextStyleType::BEND;   break;
                         case 34: st = TextStyleType::HEADER;  break;
                         case 35: st = TextStyleType::FOOTER;  break;
                         case 0:
@@ -2304,9 +2319,14 @@ bool Text::readProperties(XmlReader& e)
             _text = e.readXml();
             // 2.0 and 2.0.1 had unicode symbols
             _text.replace("<sym>unicode", "<sym>met");
+            if (score()->mscVersion() == 206)
+                  _text.replace("<font face=\"MuseJazz\"/>", "<font face=\"MuseJazz Text\"/>");
             }
-      else if (tag == "html-data")
-            setXmlText(convertFromHtml(e.readXml()));
+      else if (tag == "html-data") { // 114 only
+            QString t = e.readXml().trimmed();
+            t.replace("font-family:'MuseJazz';", "font-family:'MuseJazz Text';");
+            setXmlText(convertFromHtml(t));
+            }
       else if (tag == "subtype")          // obsolete
             e.skipCurrentElement();
       else if (tag == "frameWidth") {           // obsolete
@@ -2517,9 +2537,9 @@ QVariant Text::propertyDefault(P_ID id) const
             case Element::Type::INSTRUMENT_CHANGE: idx = TextStyleType::INSTRUMENT_CHANGE; break;
             // case Element::Type::INSTRUMENT_NAME: would need to differentiate long & short
             // probably best handle this with another override
-            case Element::Type::JUMP:              idx = TextStyleType::REPEAT; break;
+            case Element::Type::JUMP:              idx = TextStyleType::REPEAT_RIGHT; break;
             case Element::Type::LYRICS:            idx = TextStyleType::LYRIC1; break;
-            case Element::Type::MARKER:            idx = TextStyleType::REPEAT; break;
+            case Element::Type::MARKER:            idx = TextStyleType::REPEAT_RIGHT; break;
             case Element::Type::REHEARSAL_MARK:    idx = TextStyleType::REHEARSAL_MARK; break;
             case Element::Type::STAFF_TEXT:        idx = TextStyleType::STAFF; break;
             case Element::Type::TEMPO_TEXT:        idx = TextStyleType::TEMPO; break;
@@ -2905,7 +2925,7 @@ QString Text::tagEscape(QString s)
             s.replace(openTag, openProxy);
             s.replace(closeTag, closeProxy);
             }
-      s = Xml::xmlString(s);
+      s = XmlWriter::xmlString(s);
       for (QString tag : tags) {
             QString openTag = "<" + tag + ">";
             QString openProxy = "!!" + tag + "!!";
@@ -3089,7 +3109,7 @@ bool Text::validateText(QString& s)
                   d.append(c);
             }
       QString ss = "<data>" + d + "</data>\n";
-      XmlReader xml(ss);
+      XmlReader xml(0, ss);
       while (xml.readNextStartElement())
             ; // qDebug("  token %d <%s>", int(xml.tokenType()), qPrintable(xml.name().toString()));
       if (xml.error() == QXmlStreamReader::NoError) {

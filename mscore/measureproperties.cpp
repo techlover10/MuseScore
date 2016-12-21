@@ -25,6 +25,7 @@
 #include "libmscore/repeat.h"
 #include "libmscore/undo.h"
 #include "libmscore/range.h"
+#include "musescore.h"
 
 namespace Ms {
 
@@ -35,15 +36,25 @@ namespace Ms {
 MeasureProperties::MeasureProperties(Measure* _m, QWidget* parent)
    : QDialog(parent)
       {
+      setObjectName("MeasureProperties");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
       setMeasure(_m);
       staves->verticalHeader()->hide();
+
       connect(buttonBox, SIGNAL(clicked(QAbstractButton*)), this, SLOT(bboxClicked(QAbstractButton*)));
       connect(nextButton, SIGNAL(clicked()), SLOT(gotoNextMeasure()));
       connect(previousButton, SIGNAL(clicked()), SLOT(gotoPreviousMeasure()));
+
       nextButton->setEnabled(_m->nextMeasure() != 0);
       previousButton->setEnabled(_m->prevMeasure() != 0);
+      if (qApp->layoutDirection() == Qt::LayoutDirection::RightToLeft) {
+            horizontalLayout_2->removeWidget(nextButton);
+            horizontalLayout_2->insertWidget(0, nextButton);
+            }
+
+      MuseScore::restoreGeometry(this);
       }
 
 //---------------------------------------------------------
@@ -106,7 +117,7 @@ void MeasureProperties::setMeasure(Measure* _m)
       {
       m = _m;
       setWindowTitle(tr("MuseScore: Measure Properties for Measure %1").arg(m->no()+1));
-      m->score()->select(0, SelectType::SINGLE, 0);
+      m->score()->deselectAll();
       m->score()->select(m, SelectType::ADD, 0);
 
       actualZ->setValue(m->len().numerator());
@@ -134,18 +145,17 @@ void MeasureProperties::setMeasure(Measure* _m)
       for (int staffIdx = 0; staffIdx < rows; ++staffIdx) {
             QTableWidgetItem* item = new QTableWidgetItem(QString("%1").arg(staffIdx+1));
             staves->setItem(staffIdx, 0, item);
-            MStaff* ms = m->mstaff(staffIdx);
 
             item = new QTableWidgetItem(tr("visible"));
             item->setFlags(item->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
-            item->setCheckState(ms->_visible ? Qt::Checked : Qt::Unchecked);
+            item->setCheckState(m->visible(staffIdx) ? Qt::Checked : Qt::Unchecked);
             if (rows == 1)                // cannot be invisible if only one row
                   item->setFlags(item->flags() & ~Qt::ItemIsEnabled);
             staves->setItem(staffIdx, 1, item);
 
             item = new QTableWidgetItem(tr("stemless"));
             item->setFlags(item->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
-            item->setCheckState(ms->_slashStyle ? Qt::Checked : Qt::Unchecked);
+            item->setCheckState(m->slashStyle(staffIdx) ? Qt::Checked : Qt::Unchecked);
             staves->setItem(staffIdx, 2, item);
             }
       }
@@ -232,11 +242,10 @@ void MeasureProperties::apply()
       Score* score = m->score();
 
       for (int staffIdx = 0; staffIdx < score->nstaves(); ++staffIdx) {
-            MStaff* ms = m->mstaff(staffIdx);
             bool v = visible(staffIdx);
             bool s = slashStyle(staffIdx);
-            if (ms->visible() != v || ms->slashStyle() != s)
-                  score->undo(new ChangeMStaffProperties(ms, v, s));
+            if (m->visible(staffIdx) != v || m->slashStyle(staffIdx) != s)
+                  score->undo(new ChangeMStaffProperties(m, staffIdx, v, s));
             }
 
       m->undoChangeProperty(P_ID::REPEAT_COUNT, repeatCount());
@@ -249,8 +258,9 @@ void MeasureProperties::apply()
       if (m->len() != len()) {
             ScoreRange range;
             range.read(m->first(), m->last());
-            if (range.canWrite(len()))
-                  m->adjustToLen(len());
+            m->adjustToLen(len());
+#if 0
+            // handled by endCmd():
             else if (!MScore::noGui) {
                   QMessageBox::warning(0,
                      QT_TRANSLATE_NOOP("MeasureProperties", "MuseScore"),
@@ -258,8 +268,21 @@ void MeasureProperties::apply()
                      "tuplet would cross measure")
                      );
                   }
+#endif
             }
+      score->select(m, SelectType::SINGLE, 0);
       score->update();
       }
+
+//---------------------------------------------------------
+//   hideEvent
+//---------------------------------------------------------
+
+void MeasureProperties::hideEvent(QHideEvent* event)
+      {
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(event);
+      }
+
 }
 

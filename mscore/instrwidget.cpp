@@ -39,7 +39,6 @@
 
 namespace Ms {
 
-extern bool useFactorySettings;
 void filterInstruments(QTreeWidget *instrumentList, const QString &searchPhrase = QString());
 
 //---------------------------------------------------------
@@ -236,7 +235,7 @@ void StaffListItem::staffTypeChanged(int idx)
       PartListItem* pli = static_cast<PartListItem*>(QTreeWidgetItem::parent());
       pli->updateClefs();
 
-      if (_staff && _staff->staffType()->name() != stfType->name()) {
+      if (_staff && _staff->staffType(0)->name() != stfType->name()) {
             if (_op != ListItemOp::I_DELETE && _op != ListItemOp::ADD)
                   _op = ListItemOp::UPDATE;
             }
@@ -355,8 +354,6 @@ InstrumentsWidget::InstrumentsWidget(QWidget* parent)
    : QWidget(parent)
       {
       setupUi(this);
-      upButton->setIcon(*icons[int(Icons::arrowUp_ICON)]);
-      downButton->setIcon(*icons[int(Icons::arrowDown_ICON)]);
       splitter->setStretchFactor(0, 10);
       splitter->setStretchFactor(1, 0);
       splitter->setStretchFactor(2, 15);
@@ -451,7 +448,7 @@ void InstrumentsWidget::genPartList(Score* cs)
       {
       partiturList->clear();
 
-      foreach(Part* p, cs->parts()) {
+      foreach (Part* p, cs->parts()) {
             PartListItem* pli = new PartListItem(p, partiturList);
             pli->setVisible(p->show());
             foreach (Staff* s, *p->staves()) {
@@ -471,7 +468,7 @@ void InstrumentsWidget::genPartList(Score* cs)
                               }
                         }
                   sli->setLinked(bLinked);
-                  sli->setStaffType(s->staffType());
+                  sli->setStaffType(s->staffType(0));    // TODO
                   }
             pli->updateClefs();
             partiturList->setItemExpanded(pli, true);
@@ -937,19 +934,6 @@ void InstrumentsWidget::filterInstrumentsByGenre(QTreeWidget *instrumentList, QS
                   }
             ++iList;
             }
-      }
-
-//---------------------------------------------------------
-//   writeSettings
-//---------------------------------------------------------
-
-void InstrumentsWidget::writeSettings()
-      {
-      QSettings settings;
-      settings.beginGroup("Instruments");
-      settings.setValue("size", size());
-      settings.setValue("pos", pos());
-      settings.endGroup();
       }
 
 //---------------------------------------------------------

@@ -14,6 +14,7 @@
 #include "libmscore/score.h"
 #include "libmscore/element.h"
 #include "libmscore/beam.h"
+#include "libmscore/undo.h"
 #include "musescore.h"
 #include "inspectorBase.h"
 #include "inspector.h"
@@ -32,6 +33,7 @@ InspectorBase::InspectorBase(QWidget* parent)
       setAccessibleName(tr("Inspector"));
       resetMapper  = new QSignalMapper(this);
       valueMapper  = new QSignalMapper(this);
+      styleMapper  = new QSignalMapper(this);
 
       inspector = static_cast<Inspector*>(parent);
       _layout    = new QVBoxLayout;
@@ -39,6 +41,10 @@ InspectorBase::InspectorBase(QWidget* parent)
       _layout->setContentsMargins(0, 10, 0, 0);
       _layout->addStretch(100);
       setLayout(_layout);
+
+      connect(resetMapper, SIGNAL(mapped(int)), SLOT(resetClicked(int)));
+      connect(valueMapper, SIGNAL(mapped(int)), SLOT(valueChanged(int)));
+      connect(styleMapper, SIGNAL(mapped(int)), SLOT(setStyleClicked(int)));
       }
 
 //---------------------------------------------------------
@@ -79,6 +85,9 @@ QVariant InspectorBase::getValue(const InspectorItem& ii) const
             case P_TYPE::TEMPO:
                   v = v.toDouble() / 60.0;
                   break;
+            case P_TYPE::ZERO_INT:
+                  v = v.toInt() - 1;
+                  break;
             case P_TYPE::POINT_MM:
             case P_TYPE::SIZE_MM:
                   v = v.toDouble() * DPMM;
@@ -88,6 +97,16 @@ QVariant InspectorBase::getValue(const InspectorItem& ii) const
                   break;
             case P_TYPE::DIRECTION:
                   v = QVariant::fromValue(Direction(v.toInt()));
+                  break;
+            case P_TYPE::INT_LIST: {
+                  QStringList sl = v.toString().split(",", QString::SkipEmptyParts);
+                  QList<int> il;
+                  for (const QString& l : sl) {
+                        int i = l.simplified().toInt();
+                        il.append(i);
+                        }
+                  v = QVariant::fromValue(il);
+                  }
                   break;
             default:
                   break;
@@ -114,6 +133,9 @@ void InspectorBase::setValue(const InspectorItem& ii, QVariant val)
             case P_TYPE::TEMPO:
                   val = val.toDouble() * 60.0;
                   break;
+            case P_TYPE::ZERO_INT:
+                  val = val.toInt() + 1;
+                  break;
             case P_TYPE::POINT_MM:
                   val = val.toDouble() / DPMM;
             case P_TYPE::SIZE_MM:
@@ -122,6 +144,18 @@ void InspectorBase::setValue(const InspectorItem& ii, QVariant val)
             case P_TYPE::DIRECTION:
                   val = int(val.value<Direction>());
                   break;
+            case P_TYPE::INT_LIST: {
+                  QString s;
+                  QList<int> il = val.value<QList<int>>();
+                  for (int i : il) {
+                        if (!s.isEmpty())
+                              s += ", ";
+                        s += QString("%1").arg(i);
+                        }
+                  val = s;
+                  }
+                  break;
+
             default:
                   break;
             }
@@ -237,9 +271,6 @@ void InspectorBase::setElement()
                         val = QVariant(f.denominator());
                   }
 
-	      if (ii.r)
-		      ii.r->setIcon(*icons[int(Icons::reset_ICON)]);
-
             ii.w->blockSignals(true);
             setValue(ii, val);
             ii.w->blockSignals(false);
@@ -291,7 +322,7 @@ void InspectorBase::checkDifferentValues(const InspectorItem& ii)
                   if (valuesAreDifferent)
                         break;
                   }
-            QColor c(preferences.globalStyle == MuseScoreStyleType::DARK ? Qt::yellow : Qt::blue);
+            QColor c(preferences.isThemeDark() ? Qt::yellow : Qt::blue);
 
             // ii.w->setStyleSheet(valuesAreDifferent ? QString("* { color: %1 }").arg(MScore::selectColor[0].name()) : "");
             ii.w->setStyleSheet(valuesAreDifferent ? QString("* { color: %1 }").arg(c.name()) : "");
@@ -430,20 +461,80 @@ void InspectorBase::resetClicked(int i)
       }
 
 //---------------------------------------------------------
+//   setStyleClicked
+//---------------------------------------------------------
+
+void InspectorBase::setStyleClicked(int i)
+      {
+      Element* e   = inspector->element();
+      const InspectorItem& ii = iList[i];
+
+      StyleIdx sidx = e->getPropertyStyle(ii.t);
+      if (sidx == StyleIdx::NOSTYLE)
+            return;
+      e->score()->startCmd();
+      QVariant val = getValue(ii);
+      e->undoChangeProperty(ii.t, val, PropertyStyle::STYLED);
+      e->score()->undo(new ChangeStyleVal(e->score(), sidx, val));
+      checkDifferentValues(ii);
+      e->score()->endCmd();
+      }
+
+//---------------------------------------------------------
 //   mapSignals
 //    initialize inspector panel
 //---------------------------------------------------------
 
-void InspectorBase::mapSignals(const std::vector<InspectorItem>& il)
+void InspectorBase::mapSignals(const std::vector<InspectorItem>& il, const std::vector<InspectorPanel>& pl)
       {
+      for (auto& p : pl)
+            pList.push_back(p);
+      for (auto& p : pList) {
+            QToolButton* title = p.title;
+            QWidget* panel = p.panel;
+            if (title) {
+                  title->setCheckable(true);
+                  title->setFocusPolicy(Qt::NoFocus);
+                  connect(title, &QToolButton::clicked, this, [title, panel] (bool visible) {
+                        if (panel)
+                              panel->setVisible(visible);
+                        if (title) {
+                              title->setChecked(visible);
+                              title->setArrowType(visible ? Qt::DownArrow : Qt::RightArrow);
+                              QString key = title->parent()->objectName();
+                              QSettings s;
+                              s.setValue(QString("inspector/%1_visible").arg(key), visible);
+                              }});
+                  title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+                  title->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+                  QSettings s;
+                  QString key = title->parent()->objectName();
+                  bool visible = s.value(QString("inspector/%1_visible").arg(key), true).toBool();
+                  title->setArrowType(visible ? Qt::DownArrow : Qt::RightArrow);
+                  title->setChecked(visible);
+                  if (panel)
+                        panel->setVisible(visible);
+                  }
+            }
       for (auto& i : il)
             iList.push_back(i);
       int i = 0;
       for (const InspectorItem& ii : iList) {
             QToolButton* resetButton = ii.r;
             if (resetButton) {
+                  resetButton->setIcon(*icons[int(Icons::reset_ICON)]);
                   connect(resetButton, SIGNAL(clicked()), resetMapper, SLOT(map()));
+
                   resetMapper->setMapping(resetButton, i);
+                  StyleIdx sidx = inspector->element()->getPropertyStyle(ii.t);
+                  if (sidx != StyleIdx::NOSTYLE) {
+                        QMenu* menu = new QMenu(this);
+                        resetButton->setMenu(menu);
+                        resetButton->setPopupMode(QToolButton::MenuButtonPopup);
+                        QAction* a = menu->addAction(tr("set style"));
+                        styleMapper->setMapping(a, i);
+                        connect(a, SIGNAL(triggered()), styleMapper, SLOT(map()));
+                        }
                   }
             QWidget* w = ii.w;
             valueMapper->setMapping(w, i);
@@ -463,8 +554,6 @@ void InspectorBase::mapSignals(const std::vector<InspectorItem>& il)
                   qFatal("not supported widget %s", w->metaObject()->className());
             ++i;
             }
-      connect(resetMapper, SIGNAL(mapped(int)), SLOT(resetClicked(int)));
-      connect(valueMapper, SIGNAL(mapped(int)), SLOT(valueChanged(int)));
       }
 
 //---------------------------------------------------------
@@ -484,7 +573,7 @@ QWidget* InspectorBase::addWidget()
       {
       QWidget* w = new QWidget;
       _layout->insertWidget(_layout->count()-1, w);
-      _layout->insertSpacing(_layout->count()-1, 20);
+      _layout->insertSpacing(_layout->count()-1, 5);
       return w;
       }
 
@@ -511,7 +600,7 @@ void InspectorBase::resetToStyle()
       Score* score = inspector->element()->score();
       score->startCmd();
       for (Element* e : inspector->el()) {
-            Text* text = toText(e);
+            Text* text = static_cast<Text*>(e);
             text->undoChangeProperty(P_ID::TEXT_STYLE, QVariant::fromValue(score->textStyle(text->textStyleType())));
             // Preserve <sym> tags
             text->undoChangeProperty(P_ID::TEXT, text->plainText().toHtmlEscaped().replace("&lt;sym&gt;","<sym>").replace("&lt;/sym&gt;","</sym>"));

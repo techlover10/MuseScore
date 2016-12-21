@@ -23,13 +23,13 @@ Drumset* gpDrumset;           // guitar pro drumset
 //   save
 //---------------------------------------------------------
 
-void Drumset::save(Xml& xml) const
+void Drumset::save(XmlWriter& xml) const
       {
       for (int i = 0; i < 128; ++i) {
             if (!isValid(i))
                   continue;
             xml.stag(QString("Drum pitch=\"%1\"").arg(i));
-            xml.tag("head", int(noteHead(i)));
+            xml.tag("head", NoteHead::group2name(noteHead(i)));
             xml.tag("line", line(i));
             xml.tag("voice", voice(i));
             xml.tag("name", name(i));
@@ -59,6 +59,30 @@ void Drumset::save(Xml& xml) const
             }
       }
 
+bool Drumset::readProperties(XmlReader& e, int pitch)
+      {
+      const QStringRef& tag(e.name());
+      if (tag == "head")
+            _drum[pitch].notehead = NoteHead::name2group(e.readElementText());
+      else if (tag == "line")
+            _drum[pitch].line = e.readInt();
+      else if (tag == "voice")
+            _drum[pitch].voice = e.readInt();
+      else if (tag == "name")
+            _drum[pitch].name = e.readElementText();
+      else if (tag == "stem")
+            _drum[pitch].stemDirection = Direction(e.readInt());
+      else if (tag == "shortcut") {
+            bool isNum;
+            QString val(e.readElementText());
+            int i = val.toInt(&isNum);
+            _drum[pitch].shortcut = isNum ? i : toupper(val[0].toLatin1());
+            }
+      else
+            return false;
+      return true;
+      }
+
 //---------------------------------------------------------
 //   load
 //---------------------------------------------------------
@@ -71,24 +95,8 @@ void Drumset::load(XmlReader& e)
             return;
             }
       while (e.readNextStartElement()) {
-            const QStringRef& tag(e.name());
-
-            if (tag == "head")
-                  _drum[pitch].notehead = NoteHead::Group(e.readInt());
-            else if (tag == "line")
-                  _drum[pitch].line = e.readInt();
-            else if (tag == "voice")
-                  _drum[pitch].voice = e.readInt();
-            else if (tag == "name")
-                  _drum[pitch].name = e.readElementText();
-            else if (tag == "stem")
-                  _drum[pitch].stemDirection = Direction(e.readInt());
-            else if (tag == "shortcut") {
-                  bool isNum;
-                  QString val(e.readElementText());
-                  int i = val.toInt(&isNum);
-                  _drum[pitch].shortcut = isNum ? i : toupper(val[0].toLatin1());
-                  }
+            if (readProperties(e, pitch))
+                  ;
             else
                   e.unknown();
             }
@@ -176,7 +184,7 @@ void initDrumset()
       smDrumset->drum(53) = DrumInstrument(QT_TRANSLATE_NOOP("drumset", "Ride Bell"),          NoteHead::Group::HEAD_DIAMOND,  0, Direction::UP);
       smDrumset->drum(54) = DrumInstrument(QT_TRANSLATE_NOOP("drumset", "Tambourine"),         NoteHead::Group::HEAD_DIAMOND,  2, Direction::UP);
       smDrumset->drum(55) = DrumInstrument(QT_TRANSLATE_NOOP("drumset", "Splash Cymbal"),      NoteHead::Group::HEAD_CROSS,   -3, Direction::UP);
-      smDrumset->drum(56) = DrumInstrument(QT_TRANSLATE_NOOP("drumset", "Cowbell"),            NoteHead::Group::HEAD_TRIANGLE, 1, Direction::UP);
+      smDrumset->drum(56) = DrumInstrument(QT_TRANSLATE_NOOP("drumset", "Cowbell"),            NoteHead::Group::HEAD_TRIANGLE_DOWN, 1, Direction::UP);
       smDrumset->drum(57) = DrumInstrument(QT_TRANSLATE_NOOP("drumset", "Crash Cymbal 2"),     NoteHead::Group::HEAD_CROSS,   -3, Direction::UP);
       smDrumset->drum(59) = DrumInstrument(QT_TRANSLATE_NOOP("drumset", "Ride Cymbal 2"),      NoteHead::Group::HEAD_CROSS,    2, Direction::UP);
       smDrumset->drum(63) = DrumInstrument(QT_TRANSLATE_NOOP("drumset", "Open Hi Conga"),      NoteHead::Group::HEAD_CROSS,    4, Direction::UP);

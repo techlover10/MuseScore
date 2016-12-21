@@ -3,7 +3,7 @@
 //  Linux Music Score Editor
 //  $Id: preferences.cpp 5660 2012-05-22 14:17:39Z wschweer $
 //
-//  Copyright (C) 2002-2011 Werner Schweer and others
+//  Copyright (C) 2002-2016 Werner Schweer and others
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 2.
@@ -31,7 +31,11 @@
 #include "scoreview.h"
 #include "libmscore/sym.h"
 #include "pa.h"
+
+#ifdef USE_PORTMIDI
 #include "pm.h"
+#endif
+
 #include "libmscore/page.h"
 #include "file.h"
 #include "libmscore/mscore.h"
@@ -47,7 +51,6 @@ namespace Ms {
 
 bool useALSA = false, useJACK = false, usePortaudio = false, usePulseAudio = false;
 
-extern bool useFactorySettings;
 extern bool externalStyle;
 
 static int exportAudioSampleRates[2] = { 44100, 48000 };
@@ -80,6 +83,7 @@ void Preferences::init()
       iconWidth          = 28;
 
       enableMidiInput    = true;
+      realtimeDelay      = 750; // ms
       playNotes          = true;
       playChordOnAddNote = true;
 
@@ -127,6 +131,7 @@ void Preferences::init()
       useMidiRemote      = false;
       for (int i = 0; i < MIDI_REMOTES; ++i)
             midiRemote[i].type = MIDI_REMOTE_TYPE_INACTIVE;
+      advanceOnRelease   = true;
 
       midiExpandRepeats        = true;
       midiExportRPNs           = false;
@@ -151,7 +156,11 @@ void Preferences::init()
       mag                     = 1.0;
       showMidiControls        = false;
 
+#if defined(Q_OS_MAC) || defined(Q_OS_WIN)
       checkUpdateStartup      = true;
+#else
+      checkUpdateStartup      = false;
+#endif
 
       followSong              = true;
       importCharsetOve        = "GBK";
@@ -163,8 +172,7 @@ void Preferences::init()
       oscPort                 = 5282;
       singlePalette           = false;
 
-      styleName               = "light";   // ??
-      globalStyle             = MuseScoreStyleType::LIGHT;
+      globalStyle             = MuseScoreStyleType::LIGHT_FUSION;
 #ifdef Q_OS_MAC
       animations              = false;
 #else
@@ -212,19 +220,20 @@ void Preferences::write()
       s.setValue("fgUseColor",         fgUseColor);
       s.setValue("bgWallpaper",        bgWallpaper);
       s.setValue("fgWallpaper",        fgWallpaper);
-      s.setValue("fgColor",            fgColor);
-      s.setValue("bgColor",            MScore::bgColor);
+      s.setValue("fgColor",            fgColor.name(QColor::NameFormat::HexArgb));
+      s.setValue("bgColor",            MScore::bgColor.name(QColor::NameFormat::HexArgb));
       s.setValue("iconHeight",         iconHeight);
       s.setValue("iconWidth",          iconWidth);
 
-      s.setValue("selectColor1",       MScore::selectColor[0]);
-      s.setValue("selectColor2",       MScore::selectColor[1]);
-      s.setValue("selectColor3",       MScore::selectColor[2]);
-      s.setValue("selectColor4",       MScore::selectColor[3]);
-      s.setValue("dropColor",          MScore::dropColor);
-      s.setValue("defaultColor",       MScore::defaultColor);
-      s.setValue("pianoHlColor",       pianoHlColor);
+      s.setValue("selectColor1",       MScore::selectColor[0].name(QColor::NameFormat::HexArgb));
+      s.setValue("selectColor2",       MScore::selectColor[1].name(QColor::NameFormat::HexArgb));
+      s.setValue("selectColor3",       MScore::selectColor[2].name(QColor::NameFormat::HexArgb));
+      s.setValue("selectColor4",       MScore::selectColor[3].name(QColor::NameFormat::HexArgb));
+      s.setValue("dropColor",          MScore::dropColor.name(QColor::NameFormat::HexArgb));
+      s.setValue("defaultColor",       MScore::defaultColor.name(QColor::NameFormat::HexArgb));
+      s.setValue("pianoHlColor",       pianoHlColor.name(QColor::NameFormat::HexArgb));
       s.setValue("enableMidiInput",    enableMidiInput);
+      s.setValue("realtimeDelay",      realtimeDelay);
       s.setValue("playNotes",          playNotes);
       s.setValue("playChordOnAddNote", playChordOnAddNote);
 
@@ -251,8 +260,8 @@ void Preferences::write()
       s.setValue("portaudioDevice",    portaudioDevice);
       s.setValue("portMidiInput",   portMidiInput);
 
-      s.setValue("layoutBreakColor",   MScore::layoutBreakColor);
-      s.setValue("frameMarginColor",   MScore::frameMarginColor);
+      s.setValue("layoutBreakColor",   MScore::layoutBreakColor.name(QColor::NameFormat::HexArgb));
+      s.setValue("frameMarginColor",   MScore::frameMarginColor.name(QColor::NameFormat::HexArgb));
       s.setValue("antialiasedDrawing", antialiasedDrawing);
       switch(sessionStart) {
             case SessionStart::EMPTY:  s.setValue("sessionStart", "empty"); break;
@@ -306,6 +315,13 @@ void Preferences::write()
 
       s.setValue("useOsc", useOsc);
       s.setValue("oscPort", oscPort);
+      QString styleName = "light_fusion";
+      if (globalStyle == MuseScoreStyleType::DARK_OXYGEN)
+            styleName = "dark";
+      else if (globalStyle == MuseScoreStyleType::LIGHT_OXYGEN)
+            styleName = "light";
+      else if (globalStyle == MuseScoreStyleType::DARK_FUSION)
+            styleName = "dark_fusion";
       s.setValue("style", styleName);
       s.setValue("animations", animations);
       s.setValue("singlePalette", singlePalette);
@@ -341,16 +357,28 @@ void Preferences::write()
                      QString("%1%2").arg(t).arg(midiRemote[i].data));
                   }
             }
-
-//      s.beginGroup("PlayPanel");
-//      s.setValue("pos", playPanelPos);
-//      s.endGroup();
+      s.setValue("advanceOnRelease", advanceOnRelease);
 
       writePluginList();
       if (Shortcut::dirty)
             Shortcut::save();
       Shortcut::dirty = false;
       }
+
+//---------------------------------------------------------
+//   readColor
+//---------------------------------------------------------
+
+QColor Preferences::readColor(QString key, QColor def) {
+     QSettings s;
+     QVariant v = s.value(key, def);
+     if (v.type() == QVariant::Color)
+           return v.value<QColor>();
+     else {
+           QColor c(v.toString());
+           return c.isValid() ? c : def;
+      }
+}
 
 //---------------------------------------------------------
 //   read
@@ -364,21 +392,22 @@ void Preferences::read()
       fgUseColor              = s.value("fgUseColor", fgUseColor).toBool();
       bgWallpaper             = s.value("bgWallpaper", bgWallpaper).toString();
       fgWallpaper             = s.value("fgWallpaper", fgWallpaper).toString();
-      fgColor                 = s.value("fgColor", fgColor).value<QColor>();
-      MScore::bgColor         = s.value("bgColor", MScore::bgColor).value<QColor>();
+      fgColor                 = readColor("fgColor", fgColor);
+      MScore::bgColor         = readColor("bgColor", MScore::bgColor);
       iconHeight              = s.value("iconHeight", iconHeight).toInt();
       iconWidth               = s.value("iconWidth", iconWidth).toInt();
 
-      MScore::selectColor[0]  = s.value("selectColor1", MScore::selectColor[0]).value<QColor>();
-      MScore::selectColor[1]  = s.value("selectColor2", MScore::selectColor[1]).value<QColor>();
-      MScore::selectColor[2]  = s.value("selectColor3", MScore::selectColor[2]).value<QColor>();
-      MScore::selectColor[3]  = s.value("selectColor4", MScore::selectColor[3]).value<QColor>();
+      MScore::selectColor[0]  = readColor("selectColor1", MScore::selectColor[0]);
+      MScore::selectColor[1]  = readColor("selectColor2", MScore::selectColor[1]);
+      MScore::selectColor[2]  = readColor("selectColor3", MScore::selectColor[2]);
+      MScore::selectColor[3]  = readColor("selectColor4", MScore::selectColor[3]);
 
-      MScore::defaultColor    = s.value("defaultColor", MScore::defaultColor).value<QColor>();
-      MScore::dropColor       = s.value("dropColor",    MScore::dropColor).value<QColor>();
-      pianoHlColor            = s.value("pianoHlColor", pianoHlColor).value<QColor>();
+      MScore::defaultColor    = readColor("defaultColor", MScore::defaultColor);
+      MScore::dropColor       = readColor("dropColor",    MScore::dropColor);
+      pianoHlColor            = readColor("pianoHlColor", pianoHlColor);
 
       enableMidiInput         = s.value("enableMidiInput", enableMidiInput).toBool();
+      realtimeDelay           = s.value("realtimeDelay", realtimeDelay).toInt();
       playNotes               = s.value("playNotes", playNotes).toBool();
       playChordOnAddNote      = s.value("playChordOnAddNote", playChordOnAddNote).toBool();
 
@@ -403,8 +432,8 @@ void Preferences::read()
       alsaFragments      = s.value("alsaFragments", alsaFragments).toInt();
       portaudioDevice    = s.value("portaudioDevice", portaudioDevice).toInt();
       portMidiInput      = s.value("portMidiInput", portMidiInput).toString();
-      MScore::layoutBreakColor   = s.value("layoutBreakColor", MScore::layoutBreakColor).value<QColor>();
-      MScore::frameMarginColor   = s.value("frameMarginColor", MScore::frameMarginColor).value<QColor>();
+      MScore::layoutBreakColor   = readColor("layoutBreakColor", MScore::layoutBreakColor);
+      MScore::frameMarginColor   = readColor("frameMarginColor", MScore::frameMarginColor);
       antialiasedDrawing      = s.value("antialiasedDrawing", antialiasedDrawing).toBool();
 
       defaultStyleFile         = s.value("defaultStyle", defaultStyleFile).toString();
@@ -446,11 +475,15 @@ void Preferences::read()
 
       useOsc                 = s.value("useOsc", useOsc).toBool();
       oscPort                = s.value("oscPort", oscPort).toInt();
-      styleName              = s.value("style", styleName).toString();
-      if (styleName == "dark")
-            globalStyle  = MuseScoreStyleType::DARK;
-      else
-            globalStyle  = MuseScoreStyleType::LIGHT;
+      QString sName          = s.value("style", "light_fusion").toString();
+      if (sName == "dark")
+            globalStyle  = MuseScoreStyleType::DARK_OXYGEN;
+      else if (sName == "light")
+            globalStyle  = MuseScoreStyleType::LIGHT_OXYGEN;
+      else if (sName == "dark_fusion")
+            globalStyle  = MuseScoreStyleType::DARK_FUSION;
+      else if (sName == "light_fusion")
+            globalStyle  = MuseScoreStyleType::LIGHT_FUSION;
 
       animations       = s.value("animations",       animations).toBool();
       singlePalette    = s.value("singlePalette",    singlePalette).toBool();
@@ -512,6 +545,7 @@ void Preferences::read()
                         }
                   }
             }
+      advanceOnRelease  = s.value("advanceOnRelease", advanceOnRelease).toBool();
 
 //      s.beginGroup("PlayPanel");
 //      playPanelPos = s.value("pos", playPanelPos).toPoint();
@@ -542,26 +576,12 @@ void MuseScore::startPreferenceDialog()
 //---------------------------------------------------------
 
 PreferenceDialog::PreferenceDialog(QWidget* parent)
-   : QDialog(parent)
+   : AbstractDialog(parent)
       {
+      setObjectName("PreferenceDialog");
       setupUi(this);
       setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
       setModal(true);
-      startWithButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      instrumentList1Button->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      instrumentList2Button->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      defaultStyleButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      partStyleButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      myScoresButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      myStylesButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      myTemplatesButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      myPluginsButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      mySoundfontsButton->setIcon(*icons[int(Icons::edit_ICON)]);
-      myImagesButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-
-      bgWallpaperSelect->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      fgWallpaperSelect->setIcon(*icons[int(Icons::fileOpen_ICON)]);
-      styleFileButton->setIcon(*icons[int(Icons::fileOpen_ICON)]);
       shortcutsChanged        = false;
 
 #ifndef USE_JACK
@@ -642,14 +662,12 @@ PreferenceDialog::PreferenceDialog(QWidget* parent)
       recordButtons->addButton(rcr12,        RMIDI_TIE);
       recordButtons->addButton(recordUndo,   RMIDI_UNDO);
       recordButtons->addButton(recordEditMode, RMIDI_NOTE_EDIT_MODE);
+      recordButtons->addButton(recordRealtimeAdvance, RMIDI_REALTIME_ADVANCE);
 
       int n = sizeof(exportAudioSampleRates)/sizeof(*exportAudioSampleRates);
       exportAudioSampleRate->clear();
       for (int idx = 0; idx < n; ++idx)
             exportAudioSampleRate->addItem(QString("%1").arg(exportAudioSampleRates[idx]));
-
-      restartWarningLanguage->setText("");
-      connect(language, SIGNAL(currentIndexChanged(int)), SLOT(languageChanged(int)));
 
       connect(recordButtons,          SIGNAL(buttonClicked(int)), SLOT(recordButtonClicked(int)));
       connect(midiRemoteControlClear, SIGNAL(clicked()), SLOT(midiRemoteControlClearClicked()));
@@ -660,6 +678,11 @@ PreferenceDialog::PreferenceDialog(QWidget* parent)
       connect(useJackAudio, SIGNAL(toggled(bool)), SLOT(nonExclusiveJackDriver(bool)));
       connect(useJackMidi,  SIGNAL(toggled(bool)), SLOT(nonExclusiveJackDriver(bool)));
       updateRemote();
+
+      MuseScore::restoreGeometry(this);
+#if !defined(Q_OS_MAC) && !defined(Q_OS_WIN)
+      General->removeTab(General->indexOf(tabUpdate)); // updateTab not needed on Linux
+#endif
       }
 
 //---------------------------------------------------------
@@ -681,14 +704,14 @@ PreferenceDialog::~PreferenceDialog()
       qDeleteAll(localShortcuts);
       }
 
-
 //---------------------------------------------------------
-//   recordButtonClicked
+//   hideEvent
 //---------------------------------------------------------
 
-void PreferenceDialog::languageChanged(int /*val*/)
+void PreferenceDialog::hideEvent(QHideEvent* ev)
       {
-      restartWarningLanguage->setText(tr("The language will be changed once you restart MuseScore."));
+      MuseScore::saveGeometry(this);
+      QWidget::hideEvent(ev);
       }
 
 //---------------------------------------------------------
@@ -726,6 +749,7 @@ void PreferenceDialog::updateRemote()
       rca12->setChecked(preferences.midiRemote[RMIDI_TIE].type        != -1);
       recordUndoActive->setChecked(preferences.midiRemote[RMIDI_UNDO].type != -1);
       editModeActive->setChecked(preferences.midiRemote[RMIDI_NOTE_EDIT_MODE].type != -1);
+      realtimeAdvanceActive->setChecked(preferences.midiRemote[RMIDI_REALTIME_ADVANCE].type != -1);
 
       int id = mscore->midiRecordId();
       recordRewind->setChecked(id == RMIDI_REWIND);
@@ -745,6 +769,7 @@ void PreferenceDialog::updateRemote()
       rcr12->setChecked(id      == RMIDI_TIE);
       recordUndo->setChecked(id == RMIDI_UNDO);
       recordEditMode->setChecked(id == RMIDI_NOTE_EDIT_MODE);
+      recordRealtimeAdvance->setChecked(id == RMIDI_REALTIME_ADVANCE);
       }
 
 //---------------------------------------------------------
@@ -754,6 +779,8 @@ void PreferenceDialog::updateRemote()
 void PreferenceDialog::updateValues()
       {
       rcGroup->setChecked(prefs.useMidiRemote);
+      advanceOnRelease->setChecked(prefs.advanceOnRelease);
+
       fgWallpaper->setText(prefs.fgWallpaper);
       bgWallpaper->setText(prefs.bgWallpaper);
 
@@ -782,6 +809,7 @@ void PreferenceDialog::updateValues()
       iconHeight->setValue(prefs.iconHeight);
 
       enableMidiInput->setChecked(prefs.enableMidiInput);
+      realtimeDelay->setValue(prefs.realtimeDelay);
       playNotes->setChecked(prefs.playNotes);
       playChordOnAddNote->setChecked(prefs.playChordOnAddNote);
 
@@ -919,7 +947,7 @@ void PreferenceDialog::updateValues()
             case 1:  shortestNoteIndex = 4; break;
             }
       shortestNote->setCurrentIndex(shortestNoteIndex);
-      useImportBuildinStyle->setChecked(prefs.importStyleFile.isEmpty());
+      useImportBuiltinStyle->setChecked(prefs.importStyleFile.isEmpty());
       useImportStyleFile->setChecked(!prefs.importStyleFile.isEmpty());
 
       QList<QByteArray> charsets = QTextCodec::availableCodecs();
@@ -1263,6 +1291,7 @@ void PreferenceDialog::apply()
       prefs.useMidiRemote  = rcGroup->isChecked();
       for (int i = 0; i < MIDI_REMOTES; ++i)
             prefs.midiRemote[i] = preferences.midiRemote[i];
+      prefs.advanceOnRelease = advanceOnRelease->isChecked();
       prefs.fgWallpaper    = fgWallpaper->text();
       prefs.bgWallpaper    = bgWallpaper->text();
       prefs.fgColor        = fgColorLabel->color();
@@ -1274,6 +1303,7 @@ void PreferenceDialog::apply()
       prefs.bgUseColor     = bgColorButton->isChecked();
       prefs.fgUseColor     = fgColorButton->isChecked();
       prefs.enableMidiInput = enableMidiInput->isChecked();
+      prefs.realtimeDelay   = realtimeDelay->value();
       prefs.playNotes      = playNotes->isChecked();
       prefs.playChordOnAddNote = playChordOnAddNote->isChecked();
 
@@ -1456,14 +1486,8 @@ void PreferenceDialog::apply()
 
       prefs.useOsc  = oscServer->isChecked();
       prefs.oscPort = oscPort->value();
-      if (styleName->currentIndex() == int(MuseScoreStyleType::DARK)) {
-            prefs.styleName = "dark";
-            prefs.globalStyle = MuseScoreStyleType::DARK;
-            }
-      else {
-            prefs.styleName = "light";
-            prefs.globalStyle = MuseScoreStyleType::LIGHT;
-            }
+
+      prefs.globalStyle = MuseScoreStyleType(styleName->currentIndex());
 
       prefs.animations = animations->isChecked();
       MgStyleConfigData::animationsEnabled = prefs.animations;
@@ -1748,7 +1772,7 @@ bool Preferences::readPluginList()
             qDebug("Cannot open plugins file <%s>", qPrintable(f.fileName()));
             return false;
             }
-      XmlReader e(&f);
+      XmlReader e(0, &f);
       while (e.readNextStartElement()) {
             if (e.name() == "museScore") {
                   while (e.readNextStartElement()) {
@@ -1799,7 +1823,7 @@ void Preferences::writePluginList()
             qDebug("cannot create plugin file <%s>", qPrintable(f.fileName()));
             return;
             }
-      Xml xml(&f);
+      XmlWriter xml(0, &f);
       xml.header();
       xml.stag("museScore version=\"" MSC_VERSION "\"");
       foreach(const PluginDescription& d, pluginList) {

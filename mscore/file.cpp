@@ -229,7 +229,7 @@ static bool readScoreError(const QString& name, Score::FileError error, bool ask
 //    return true on cancel
 //---------------------------------------------------------
 
-bool MuseScore::checkDirty(Score* s)
+bool MuseScore::checkDirty(MasterScore* s)
       {
       if (s->dirty() || s->created()) {
             QMessageBox::StandardButton n = QMessageBox::warning(this, tr("MuseScore"),
@@ -378,7 +378,7 @@ bool MuseScore::saveFile()
 //    return true on success
 //---------------------------------------------------------
 
-bool MuseScore::saveFile(Score* score)
+bool MuseScore::saveFile(MasterScore* score)
       {
       if (score == 0)
             return false;
@@ -423,7 +423,7 @@ bool MuseScore::saveFile(Score* score)
             return false;
             }
       score->setCreated(false);
-      setWindowTitle("MuseScore: " + score->fileInfo()->completeBaseName());
+      setWindowTitle(QString(MUSESCORE_NAME_VERSION) + ": " + score->fileInfo()->completeBaseName());
       int idx = scoreList.indexOf(score->masterScore());
       tab1->setTabText(idx, score->fileInfo()->completeBaseName());
       if (tab2)
@@ -454,7 +454,7 @@ QString MuseScore::createDefaultName() const
                   tmpName = name;
             else
                   tmpName = QString("%1-%2").arg(name).arg(n);
-            foreach(Score* s, scoreList) {
+            for (MasterScore* s : scoreList) {
                   if (s->fileInfo()->completeBaseName() == tmpName) {
                         nameExists = true;
                         break;
@@ -468,13 +468,6 @@ QString MuseScore::createDefaultName() const
       return name;
       }
 
-
-void MuseScore::updateNewWizard()
-      {
-      if (newWizard != 0)
-            newWizard = new NewWizard(this);
-      }
-
 //---------------------------------------------------------
 //   newFile
 //    create new score
@@ -482,9 +475,10 @@ void MuseScore::updateNewWizard()
 
 void MuseScore::newFile()
       {
-      if (newWizard == 0)
+      if (!newWizard)
             newWizard = new NewWizard(this);
-      newWizard->restart();
+      else
+            newWizard->restart();
       if (newWizard->exec() != QDialog::Accepted)
             return;
       int measures            = newWizard->measures();
@@ -602,7 +596,7 @@ void MuseScore::newFile()
                               ts->setTrack(staffIdx * VOICES);
                               ts->setSig(timesig, timesigType);
                               Measure* m = _score->firstMeasure();
-                              Segment* s = m->getSegment(ts, 0);
+                              Segment* s = m->getSegment(Segment::Type::TimeSig, 0);
                               s->add(ts);
                               Part* part = staff->part();
                               if (!part->instrument()->useDrumset()) {
@@ -620,7 +614,7 @@ void MuseScore::newFile()
                                           KeySig* keysig = new KeySig(score);
                                           keysig->setTrack(staffIdx * VOICES);
                                           keysig->setKeySigEvent(nKey);
-                                          Segment* s = measure->getSegment(keysig, 0);
+                                          Segment* s = measure->getSegment(Segment::Type::KeySig, 0);
                                           s->add(keysig);
                                           }
                                     }
@@ -645,7 +639,7 @@ void MuseScore::newFile()
                                           rest->setScore(_score);
                                           rest->setDuration(d.fraction());
                                           rest->setTrack(staffIdx * VOICES);
-                                          Segment* seg = measure->getSegment(rest, ltick);
+                                          Segment* seg = measure->getSegment(Segment::Type::ChordRest, ltick);
                                           seg->add(rest);
                                           ltick += rest->actualTicks();
                                           k++;
@@ -660,7 +654,7 @@ void MuseScore::newFile()
                               rest->setScore(_score);
                               rest->setDuration(measure->len());
                               rest->setTrack(staffIdx * VOICES);
-                              Segment* seg = measure->getSegment(rest, tick);
+                              Segment* seg = measure->getSegment(Segment::Type::ChordRest, tick);
                               seg->add(rest);
                               }
                         }
@@ -754,13 +748,13 @@ void MuseScore::newFile()
 
       for (Excerpt* x : excerpts) {
             Score* xs = new Score(static_cast<MasterScore*>(score));
-            xs->setName(x->title());
             xs->style()->set(StyleIdx::createMultiMeasureRests, true);
             x->setPartScore(xs);
+            xs->setExcerpt(x);
             score->excerpts().append(x);
-            createExcerpt(x);
-            score->setExcerptsChanged(true);
+            Excerpt::createExcerpt(x);
             }
+      score->setExcerptsChanged(true);
       }
 
 //---------------------------------------------------------
@@ -1469,16 +1463,29 @@ QString MuseScore::getDrumsetFilename(bool open)
 
 void MuseScore::printFile()
       {
+      LayoutMode layoutMode = cs->layoutMode();
+      if (layoutMode != LayoutMode::PAGE) {
+            cs->setLayoutMode(LayoutMode::PAGE);
+            cs->doLayout();
+            }
+
       QPrinter printerDev(QPrinter::HighResolution);
       const PageFormat* pf = cs->pageFormat();
-      printerDev.setPaperSize(pf->size(), QPrinter::Inch);
+      QPageSize ps(QPageSize::id(pf->size(), QPageSize::Inch));
+      printerDev.setPageSize(ps);
+      printerDev.setPageOrientation(
+            pf->size().width() > pf->size().height() ? QPageLayout::Landscape : QPageLayout::Portrait
+         );
 
       printerDev.setCreator("MuseScore Version: " VERSION);
       printerDev.setFullPage(true);
       if (!printerDev.setPageMargins(QMarginsF()))
             qDebug("unable to clear printer margins");
       printerDev.setColorMode(QPrinter::Color);
-      printerDev.setDocName(cs->fileInfo()->completeBaseName());
+      if (cs->isMaster())
+            printerDev.setDocName(cs->masterScore()->fileInfo()->completeBaseName());
+      else
+            printerDev.setDocName(cs->excerpt()->title());
       printerDev.setOutputFormat(QPrinter::NativeFormat);
       int pages    = cs->pages().size();
       printerDev.setFromTo(1, pages);
@@ -1488,47 +1495,47 @@ void MuseScore::printFile()
 #else
       // when setting this on windows platform, pd.exec() does not
       // show dialog
-      printerDev.setOutputFileName(cs->masterScore()->fileInfo()->path() + "/" + cs->fileInfo()->completeBaseName() + ".pdf");
+      if (cs->isMaster())
+            printerDev.setOutputFileName(cs->masterScore()->fileInfo()->path() + "/" + cs->masterScore()->fileInfo()->completeBaseName() + ".pdf");
+      else
+            printerDev.setOutputFileName(cs->masterScore()->fileInfo()->path() + "/" + cs->excerpt()->title() + ".pdf");
 #endif
 
       QPrintDialog pd(&printerDev, 0);
 
-      if (!pd.exec())
-            return;
+      if (pd.exec()) {
+            QPainter p(&printerDev);
+            p.setRenderHint(QPainter::Antialiasing, true);
+            p.setRenderHint(QPainter::TextAntialiasing, true);
+            double mag = printerDev.logicalDpiX() / DPI;
 
-      LayoutMode layoutMode = cs->layoutMode();
-      if (layoutMode != LayoutMode::PAGE) {
-            cs->setLayoutMode(LayoutMode::PAGE);
-            cs->doLayout();
-            }
+            double pr = MScore::pixelRatio;
+            MScore::pixelRatio = 1.0 / mag;
+            p.scale(mag, mag);
 
-      QPainter p(&printerDev);
-      p.setRenderHint(QPainter::Antialiasing, true);
-      p.setRenderHint(QPainter::TextAntialiasing, true);
-      double mag = printerDev.logicalDpiX() / DPI;
+            int fromPage = printerDev.fromPage() - 1;
+            int toPage   = printerDev.toPage() - 1;
+            if (fromPage < 0)
+                  fromPage = 0;
+            if ((toPage < 0) || (toPage >= pages))
+                  toPage = pages - 1;
 
-      p.scale(mag, mag);
+            for (int copy = 0; copy < printerDev.numCopies(); ++copy) {
+                  bool firstPage = true;
+                  for (int n = fromPage; n <= toPage; ++n) {
+                        if (!firstPage)
+                              printerDev.newPage();
+                        firstPage = false;
 
-      int fromPage = printerDev.fromPage() - 1;
-      int toPage   = printerDev.toPage() - 1;
-      if (fromPage < 0)
-            fromPage = 0;
-      if ((toPage < 0) || (toPage >= pages))
-            toPage = pages - 1;
-
-      for (int copy = 0; copy < printerDev.numCopies(); ++copy) {
-            bool firstPage = true;
-            for (int n = fromPage; n <= toPage; ++n) {
-                  if (!firstPage)
-                        printerDev.newPage();
-                  firstPage = false;
-
-                  cs->print(&p, n);
-                  if ((copy + 1) < printerDev.numCopies())
-                        printerDev.newPage();
+                        cs->print(&p, n);
+                        if ((copy + 1) < printerDev.numCopies())
+                              printerDev.newPage();
+                        }
                   }
+            p.end();
+            MScore::pixelRatio = pr;
             }
-      p.end();
+
       if (layoutMode != cs->layoutMode()) {
             cs->setLayoutMode(layoutMode);
             cs->doLayout();
@@ -1584,14 +1591,14 @@ void MuseScore::exportFile()
             if (!cs->isMaster())
                   name = QString("%1/%2-%3").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName()).arg(createDefaultFileName(cs->name()));
             else
-                  name = QString("%1/%2").arg(saveDirectory).arg(cs->fileInfo()->completeBaseName());
+                  name = QString("%1/%2").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName());
             }
       else
 #endif
       if (!cs->isMaster())
-            name = QString("%1/%2-%3.%4").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName()).arg(createDefaultFileName(cs->fileInfo()->completeBaseName())).arg(saveFormat);
+            name = QString("%1/%2-%3.%4").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName()).arg(createDefaultFileName(cs->name())).arg(saveFormat);
       else
-            name = QString("%1/%2.%3").arg(saveDirectory).arg(cs->fileInfo()->completeBaseName()).arg(saveFormat);
+            name = QString("%1/%2.%3").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName()).arg(saveFormat);
 
       int idx = fl.indexOf(QRegExp(".+\\(\\*\\." + saveFormat + "\\)"), Qt::CaseInsensitive);
       if (idx != -1)
@@ -1659,7 +1666,7 @@ bool MuseScore::exportParts()
       if (saveFormat.isEmpty())
             saveFormat = "pdf";
 
-      QString scoreName = (cs->isMaster() ? cs : cs->masterScore())->fileInfo()->completeBaseName();
+      QString scoreName = cs->isMaster() ? cs->masterScore()->fileInfo()->completeBaseName() : cs->title();
       QString name;
 #ifdef Q_OS_WIN
       if (QSysInfo::WindowsVersion == QSysInfo::WV_XP)
@@ -1695,9 +1702,9 @@ bool MuseScore::exportParts()
       QString skipMessage = tr("Skip");
       foreach (Excerpt* e, thisScore->excerpts())  {
             Score* pScore = e->partScore();
-            QString partfn = fi.absolutePath() + QDir::separator() + fi.completeBaseName() + "-" + createDefaultFileName(pScore->fileInfo()->completeBaseName()) + "." + ext;
+            QString partfn = fi.absolutePath() + QDir::separator() + fi.completeBaseName() + "-" + createDefaultFileName(pScore->title()) + "." + ext;
             QFileInfo fip(partfn);
-            if(fip.exists() && !overwrite) {
+            if (fip.exists() && !overwrite) {
                   if(noToAll)
                         continue;
                   QMessageBox msgBox( QMessageBox::Question, confirmReplaceTitle,
@@ -1792,7 +1799,7 @@ bool MuseScore::saveAs(Score* cs, bool saveCopy, const QString& path, const QStr
 
             if (rv && !saveCopy) {
                   cs->masterScore()->fileInfo()->setFile(fn);
-                  setWindowTitle("MuseScore: " + cs->fileInfo()->completeBaseName());
+                  setWindowTitle(QString(MUSESCORE_NAME_VERSION) + ": " + cs->title());
                   cs->undoStack()->setClean();
                   dirtyChanged(cs);
                   cs->setCreated(false);
@@ -1880,6 +1887,7 @@ bool MuseScore::savePdf(Score* cs, const QString& saveName)
       {
       cs->setPrinting(true);
       MScore::pdfPrinting = true;
+
       QPdfWriter printerDev(saveName);
       printerDev.setResolution(preferences.exportPdfDpi);
       const PageFormat* pf = cs->pageFormat();
@@ -1888,18 +1896,23 @@ bool MuseScore::savePdf(Score* cs, const QString& saveName)
       printerDev.setCreator("MuseScore Version: " VERSION);
       if (!printerDev.setPageMargins(QMarginsF()))
             qDebug("unable to clear printer margins");
-      printerDev.setTitle(cs->fileInfo()->completeBaseName());
+      printerDev.setTitle(cs->title());
 
       QPainter p;
       if (!p.begin(&printerDev))
             return false;
       p.setRenderHint(QPainter::Antialiasing, true);
       p.setRenderHint(QPainter::TextAntialiasing, true);
-      double mag = printerDev.logicalDpiX() / DPI;
-      p.scale(mag, mag);
+
+      p.setViewport(QRect(0.0, 0.0, pf->size().width() * printerDev.logicalDpiX(),
+         pf->size().height()*printerDev.logicalDpiY()));
+      p.setWindow(QRect(0.0, 0.0, pf->size().width() * DPI, pf->size().height() * DPI));
+
+      double pr = MScore::pixelRatio;
+      MScore::pixelRatio = DPI / printerDev.logicalDpiX();
 
       const QList<Page*> pl = cs->pages();
-      int pages    = pl.size();
+      int pages = pl.size();
       bool firstPage = true;
       for (int n = 0; n < pages; ++n) {
             if (!firstPage)
@@ -1909,6 +1922,8 @@ bool MuseScore::savePdf(Score* cs, const QString& saveName)
             }
       p.end();
       cs->setPrinting(false);
+
+      MScore::pixelRatio = pr;
       MScore::pdfPrinting = false;
       return true;
       }
@@ -1928,7 +1943,7 @@ bool MuseScore::savePdf(QList<Score*> cs, const QString& saveName)
       if (!printerDev.setPageMargins(QMarginsF()))
             qDebug("unable to clear printer margins");
       printerDev.setColorMode(QPrinter::Color);
-      printerDev.setDocName(firstScore->fileInfo()->completeBaseName());
+      printerDev.setDocName(firstScore->title());
       printerDev.setOutputFormat(QPrinter::PdfFormat);
 
       printerDev.setOutputFileName(saveName);
@@ -1939,18 +1954,24 @@ bool MuseScore::savePdf(QList<Score*> cs, const QString& saveName)
 
       p.setRenderHint(QPainter::Antialiasing, true);
       p.setRenderHint(QPainter::TextAntialiasing, true);
-      double mag = printerDev.logicalDpiX() / DPI;
-      p.scale(mag, mag);
+
+      p.setViewport(QRect(0.0, 0.0, pf->size().width() * printerDev.logicalDpiX(),
+         pf->size().height()*printerDev.logicalDpiY()));
+      p.setWindow(QRect(0.0, 0.0, pf->size().width() * DPI, pf->size().height() * DPI));
+
+      double pr = MScore::pixelRatio;
+      MScore::pixelRatio = DPI / printerDev.logicalDpiX();
+      MScore::pdfPrinting = true;
 
       bool firstPage = true;
       for (Score* s : cs) {
             LayoutMode layoutMode = s->layoutMode();
             if (layoutMode != LayoutMode::PAGE) {
                   s->setLayoutMode(LayoutMode::PAGE);
-                  s->doLayout();
+            //      s->doLayout();
                   }
+            s->doLayout();
             s->setPrinting(true);
-            MScore::pdfPrinting = true;
 
             const PageFormat* pf = s->pageFormat();
             printerDev.setPaperSize(pf->size(), QPrinter::Inch);
@@ -1965,7 +1986,6 @@ bool MuseScore::savePdf(QList<Score*> cs, const QString& saveName)
                   }
             //reset score
             s->setPrinting(false);
-            MScore::pdfPrinting = false;
 
             if (layoutMode != s->layoutMode()) {
                   s->setLayoutMode(layoutMode);
@@ -1973,6 +1993,8 @@ bool MuseScore::savePdf(QList<Score*> cs, const QString& saveName)
                   }
             }
       p.end();
+      MScore::pdfPrinting = false;
+      MScore::pixelRatio = pr;
       return true;
       }
 
@@ -2150,16 +2172,16 @@ bool MuseScore::saveAs(Score* cs, bool saveCopy)
 #ifdef Q_OS_WIN
       if (QSysInfo::WindowsVersion == QSysInfo::WV_XP) {
             if (!cs->isMaster())
-                  name = QString("%1/%2-%3").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName()).arg(createDefaultFileName(cs->fileInfo()->completeBaseName()));
+                  name = QString("%1/%2-%3").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName()).arg(createDefaultFileName(cs->title()));
             else
-                  name = QString("%1/%2").arg(saveDirectory).arg(cs->fileInfo()->completeBaseName());
+                  name = QString("%1/%2").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName());
             }
       else
 #endif
       if (!cs->isMaster())
-            name = QString("%1/%2-%3.mscz").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName()).arg(createDefaultFileName(cs->fileInfo()->completeBaseName()));
+            name = QString("%1/%2-%3.mscz").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName()).arg(createDefaultFileName(cs->title()));
       else
-            name = QString("%1/%2.mscz").arg(saveDirectory).arg(cs->fileInfo()->completeBaseName());
+            name = QString("%1/%2.mscz").arg(saveDirectory).arg(cs->masterScore()->fileInfo()->completeBaseName());
 
       QString filter = fl.join(";;");
       QString fn     = mscore->getSaveScoreName(saveDialogTitle, name, filter);
@@ -2203,7 +2225,7 @@ bool MuseScore::saveSelection(Score* cs)
       if (saveDirectory.isEmpty())
             saveDirectory = preferences.myScoresPath;
 
-      QString name   = QString("%1/%2.mscz").arg(saveDirectory).arg(cs->fileInfo()->completeBaseName());
+      QString name   = QString("%1/%2.mscz").arg(saveDirectory).arg(cs->title());
       QString filter = fl.join(";;");
       QString fn     = mscore->getSaveScoreName(saveDialogTitle, name, filter);
       if (fn.isEmpty())
@@ -2317,6 +2339,7 @@ bool MuseScore::savePng(Score* score, const QString& name, bool screenshot, bool
       {
       bool rv = true;
       score->setPrinting(!screenshot);    // dont print page break symbols etc.
+      double pr = MScore::pixelRatio;
 
       QImage::Format f;
       if (format != QImage::Format_Indexed8)
@@ -2350,6 +2373,8 @@ bool MuseScore::savePng(Score* score, const QString& name, bool screenshot, bool
             printer.fill(transparent ? 0 : 0xffffffff);
 
             double mag = convDpi / DPI;
+            MScore::pixelRatio = 1.0 / mag;
+
             QPainter p(&printer);
             p.setRenderHint(QPainter::Antialiasing, true);
             p.setRenderHint(QPainter::TextAntialiasing, true);
@@ -2409,6 +2434,7 @@ bool MuseScore::savePng(Score* score, const QString& name, bool screenshot, bool
                   break;
             }
       score->setPrinting(false);
+      MScore::pixelRatio = pr;
       return rv;
       }
 
@@ -2520,38 +2546,70 @@ QString MuseScore::getWallpaper(const QString& caption)
 // [of edit that must be coordinated with the MuseScore master code base.
 //
 bool MuseScore::saveSvg(Score* score, const QString& saveName)
-{
-    SvgGenerator printer;
-
+      {
       QString title(score->title());
-      printer.setTitle(title);
-      printer.setFileName(saveName);
-      const PageFormat* pf = score->pageFormat();
-
-      QRectF r;
-      if (trimMargin >= 0 && score->npages() == 1) {
-            QMarginsF margins(trimMargin, trimMargin, trimMargin, trimMargin);
-            r = score->pages().first()->tbbox() + margins;
-            }
-      else
-            r = QRectF(0, 0, pf->width() * DPI * score->pages().size(), pf->height() * DPI);
-      qreal w = r.width();
-      qreal h = r.height();
-
-      printer.setSize(QSize(w, h));
-      printer.setViewBox(QRectF(0, 0, w, h));
-
       score->setPrinting(true);
       MScore::pdfPrinting = true;
+      const QList<Page*>& pl = score->pages();
+      int pages = pl.size();
+      int padding = QString("%1").arg(pages).size();
+      bool overwrite = false;
+      bool noToAll = false;
+      double pr = MScore::pixelRatio;
+      for (int pageNumber = 0; pageNumber < pages; ++pageNumber) {
+            Page* page = pl.at(pageNumber);
+            SvgGenerator printer;
+            printer.setTitle(pages > 1 ? QString("%1 (%2)").arg(title).arg(pageNumber + 1) : title);
 
-      QPainter p(&printer);
-      p.setRenderHint(QPainter::Antialiasing, true);
-      p.setRenderHint(QPainter::TextAntialiasing, true);
-    //p.scale(mag, mag); // mag == 1 now, 1:1 scaling, the default
-      if (trimMargin >= 0 && score->npages() == 1)
-            p.translate(-r.topLeft());
+            QString fileName(saveName);
+            if (fileName.endsWith(".svg"))
+                  fileName = fileName.left(fileName.size() - 4);
+            fileName += QString("-%1.svg").arg(pageNumber+1, padding, 10, QLatin1Char('0'));
+            if (!converterMode) {
+                  QFileInfo fip(fileName);
+                  if(fip.exists() && !overwrite) {
+                        if(noToAll)
+                              continue;
+                        QMessageBox msgBox( QMessageBox::Question, tr("Confirm Replace"),
+                              tr("\"%1\" already exists.\nDo you want to replace it?\n").arg(QDir::toNativeSeparators(fileName)),
+                              QMessageBox::Yes |  QMessageBox::YesToAll | QMessageBox::No |  QMessageBox::NoToAll);
+                        msgBox.setButtonText(QMessageBox::Yes, tr("Replace"));
+                        msgBox.setButtonText(QMessageBox::No, tr("Skip"));
+                        msgBox.setButtonText(QMessageBox::YesToAll, tr("Replace All"));
+                        msgBox.setButtonText(QMessageBox::NoToAll, tr("Skip All"));
+                        int sb = msgBox.exec();
+                        if(sb == QMessageBox::YesToAll) {
+                              overwrite = true;
+                              }
+                        else if (sb == QMessageBox::NoToAll) {
+                              noToAll = true;
+                              continue;
+                              }
+                        else if (sb == QMessageBox::No)
+                              continue;
+                        }
+                  }
+            printer.setFileName(fileName);
 
-      for (Page* page : score->pages()) {
+            QRectF r;
+            if (trimMargin >= 0) {
+                  QMarginsF margins(trimMargin, trimMargin, trimMargin, trimMargin);
+                  r = page->tbbox() + margins;
+                  }
+            else
+                  r = page->abbox();
+            qreal w = r.width();
+            qreal h = r.height();
+            printer.setSize(QSize(w, h));
+            printer.setViewBox(QRectF(0, 0, w, h));
+            QPainter p(&printer);
+            p.setRenderHint(QPainter::Antialiasing, true);
+            p.setRenderHint(QPainter::TextAntialiasing, true);
+            if (trimMargin >= 0 && score->npages() == 1)
+                  p.translate(-r.topLeft());
+            MScore::pixelRatio = DPI / printer.logicalDpiX();
+            if (trimMargin >= 0)
+                   p.translate(-r.topLeft());
             // 1st pass: StaffLines
             for  (System* s : page->systems()) {
                   for (int i = 0, n = s->staves()->size(); i < n; i++) {
@@ -2572,13 +2630,11 @@ bool MuseScore::saveSvg(Score* score, const QString& saveName)
                         //
                         bool byMeasure = false;
                         for (MeasureBase* mb = s->firstMeasure(); mb != 0; mb = s->nextMeasure(mb)) {
-                              if (mb->type() == Element::Type::HBOX
-                               || mb->type() == Element::Type::VBOX
-                               || !static_cast<Measure*>(mb)->visible(i)) {
+                              if (mb->isHBox() || mb->isVBox() || !toMeasure(mb)->visible(i)) {
                                     byMeasure = true;
                                     break;
+                                    }
                               }
-                        }
                         if (byMeasure) { // Draw visible staff lines by measure
                               for (MeasureBase* mb = s->firstMeasure(); mb != 0; mb = s->nextMeasure(mb)) {
                                     if (mb->type() != Element::Type::HBOX
@@ -2587,9 +2643,9 @@ bool MuseScore::saveSvg(Score* score, const QString& saveName)
                                           StaffLines* sl = static_cast<Measure*>(mb)->staffLines(i);
                                           printer.setElement(sl);
                                           paintElement(p, sl);
+                                          }
                                     }
                               }
-                        }
                         else { // Draw staff lines once per system
                               StaffLines* firstSL = s->firstMeasure()->staffLines(i)->clone();
                               StaffLines*  lastSL =  s->lastMeasure()->staffLines(i);
@@ -2598,13 +2654,12 @@ bool MuseScore::saveSvg(Score* score, const QString& saveName)
                                                     - firstSL->pagePos().x());
                               printer.setElement(firstSL);
                               paintElement(p, firstSL);
+                              }
                         }
                   }
-            }
             // 2nd pass: the rest of the elements
             QList<Element*> pel = page->elements();
             qStableSort(pel.begin(), pel.end(), elementLessThan);
-
             Element::Type eType;
             for (const Element* e : pel) {
                   // Always exclude invisible elements
@@ -2625,16 +2680,16 @@ bool MuseScore::saveSvg(Score* score, const QString& saveName)
 
                   // Paint it
                   paintElement(p, e);
+                  }
+            p.end(); // Writes MuseScore SVG file to disk, finally
             }
-            p.translate(QPointF(pf->width() * DPI, 0.0));
-      }
 
       // Clean up and return
+      MScore::pixelRatio = pr;
       score->setPrinting(false);
       MScore::pdfPrinting = false;
-      p.end(); // Writes MuseScore SVG file to disk, finally
       return true;
-}
+      }
 
 //---------------------------------------------------------
 //   createThumbnail
@@ -2644,8 +2699,10 @@ static QPixmap createThumbnail(const QString& name)
       {
       MasterScore* score = new MasterScore;
       Score::FileError error = readScore(score, name, true);
-      if (error != Score::FileError::FILE_NO_ERROR)
+      if (error != Score::FileError::FILE_NO_ERROR) {
+            delete score;
             return QPixmap();
+            }
       score->doLayout();
       QImage pm = score->createThumbnail();
       delete score;

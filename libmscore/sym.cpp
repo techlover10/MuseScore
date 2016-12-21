@@ -34,10 +34,13 @@ namespace Ms {
 static const int FALLBACK_FONT = 0;       // Bravura
 
 QVector<ScoreFont> ScoreFont::_scoreFonts {
-      ScoreFont("Bravura",    "Bravura",     ":/fonts/bravura/",  "Bravura.otf"  ),
-      ScoreFont("Emmentaler", "MScore",      ":/fonts/mscore/",   "mscore.ttf"   ),
-      ScoreFont("Gonville",   "Gootville",   ":/fonts/gootville/", "Gootville.otf" )
+      ScoreFont("Bravura",    "Bravura",     ":/fonts/bravura/",   "Bravura.otf"  ),
+      ScoreFont("Emmentaler", "MScore",      ":/fonts/mscore/",    "mscore.ttf"   ),
+      ScoreFont("Gonville",   "Gootville",   ":/fonts/gootville/", "Gootville.otf" ),
+      ScoreFont("MuseJazz",   "MuseJazz",     ":/fonts/musejazz/", "MuseJazz.otf" ),
       };
+
+QJsonObject ScoreFont::_glyphnamesJson;
 
 //---------------------------------------------------------
 //   table of symbol names
@@ -2646,7 +2649,15 @@ QVector<const char*> Sym::symNames = {
 //    SMuFL stylistic alternates which we need to access directly
 
       "noteheadDoubleWholeAlt",           // double whole with double side bars
+      "4stringTabClefSerif",              // TAB clef in script style
       "6stringTabClefSerif",              // TAB clef in script style
+      "cClefFrench",
+      "cClefFrench20C",
+      "fClefFrench",
+      "fClef19thCentury",
+      "braceSmall",
+      "braceLarge",
+      "braceLarger",
 
 //    MuseScore local symbols, precomposed symbols to mimic some emmentaler glyphs
 
@@ -2669,7 +2680,7 @@ QVector<const char*> Sym::symNames = {
       };
 
 QVector<QString> Sym::symUserNames = {
-      "noSym",
+      QT_TRANSLATE_NOOP("symUserNames", "No symbol"),
       "4-string tab clef",
       "6-string tab clef",
       "11 large diesis down, 3\u00b0 down [46 EDO]",
@@ -2888,62 +2899,63 @@ QVector<QString> Sym::symUserNames = {
       "Unused",
       "Unused",
       "Unused",
-      "Combining accordion coupler dot",
-      "Combining left hand, 2 ranks, empty",
-      "Combining left hand, 3 ranks, empty (square)",
-      "Combining right hand, 3 ranks, empty",
-      "Combining right hand, 4 ranks, empty",
-      "Diatonic accordion clef",
-      "Left hand, 2 ranks, 16' stop (round)",
-      "Left hand, 2 ranks, 8' stop + 16' stop (round)",
-      "Left hand, 2 ranks, 8' stop (round)",
-      "Left hand, 2 ranks, full master (round)",
-      "Left hand, 2 ranks, master + 16' stop (round)",
-      "Left hand, 2 ranks, master (round)",
-      "Left hand, 3 ranks, 2' stop + 8' stop (square)",
-      "Left hand, 3 ranks, 2' stop (square)",
-      "Left hand, 3 ranks, 8' stop (square)",
-      "Left hand, 3 ranks, double 8' stop (square)",
-      "Left hand, 3 ranks, 2' stop + double 8' stop (tutti) (square)",
-      "Pull",
-      "Push",
-      "Right hand, 3 ranks, 8' stop + upper tremolo 8' stop + 16' stop (accordion)",
-      "Right hand, 3 ranks, lower tremolo 8' stop + 8' stop + upper tremolo 8' stop (authentic musette)",
-      "Right hand, 3 ranks, 8' stop + 16' stop (bandone\u00f3n)",
-      "Right hand, 3 ranks, 16' stop (bassoon)",
-      "Right hand, 3 ranks, 8' stop (clarinet)",
-      "Right hand, 3 ranks, lower tremolo 8' stop + 8' stop + upper tremolo 8' stop + 16' stop",
-      "Right hand, 3 ranks, 4' stop + lower tremolo 8' stop + 8' stop + upper tremolo 8' stop",
-      "Right hand, 3 ranks, 4' stop + lower tremolo 8' stop + 8' stop + upper tremolo 8' stop + 16' stop",
-      "Right hand, 3 ranks, 4' stop + 8' stop + 16' stop (harmonium)",
-      "Right hand, 3 ranks, 4' stop + 8' stop + upper tremolo 8' stop (imitation musette)",
-      "Right hand, 3 ranks, lower tremolo 8' stop",
-      "Right hand, 3 ranks, 4' stop + lower tremolo 8' stop + upper tremolo 8' stop + 16' stop (master)",
-      "Right hand, 3 ranks, 4' stop + 8' stop (oboe)",
-      "Right hand, 3 ranks, 4' stop + 16' stop (organ)",
-      "Right hand, 3 ranks, 4' stop (piccolo)",
-      "Right hand, 3 ranks, lower tremolo 8' stop + upper tremolo 8' stop + 16' stop",
-      "Right hand, 3 ranks, 4' stop + lower tremolo 8' stop + upper tremolo 8' stop",
-      "Right hand, 3 ranks, lower tremolo 8' stop + upper tremolo 8' stop",
-      "Right hand, 3 ranks, upper tremolo 8' stop",
-      "Right hand, 3 ranks, 8' stop + upper tremolo 8' stop (violin)",
-      "Right hand, 4 ranks, alto",
-      "Right hand, 4 ranks, bass/alto",
-      "Right hand, 4 ranks, master",
-      "Right hand, 4 ranks, soft bass",
-      "Right hand, 4 ranks, soft tenor",
-      "Right hand, 4 ranks, soprano",
-      "Right hand, 4 ranks, tenor",
-      "Ricochet (2 tones)",
-      "Ricochet (3 tones)",
-      "Ricochet (4 tones)",
-      "Ricochet (5 tones)",
-      "Ricochet (6 tones)",
-      "Combining ricochet for stem (2 tones)",
-      "Combining ricochet for stem (3 tones)",
-      "Combining ricochet for stem (4 tones)",
-      "Combining ricochet for stem (5 tones)",
-      "Combining ricochet for stem (6 tones)",
+      QT_TRANSLATE_NOOP("symUserNames", "Combining accordion coupler dot"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining left hand, 2 ranks, empty"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining left hand, 3 ranks, empty (square)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining right hand, 3 ranks, empty"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining right hand, 4 ranks, empty"),
+      QT_TRANSLATE_NOOP("symUserNames", "Diatonic accordion clef"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 2 ranks, 16' stop (round)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 2 ranks, 8' stop + 16' stop (round)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 2 ranks, 8' stop (round)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 2 ranks, full master (round)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 2 ranks, master + 16' stop (round)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 2 ranks, master (round)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 3 ranks, 2' stop + 8' stop (square)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 3 ranks, 2' stop (square)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 3 ranks, 8' stop (square)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 3 ranks, double 8' stop (square)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Left hand, 3 ranks, 2' stop + double 8' stop (tutti) (square)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Pull"),
+      QT_TRANSLATE_NOOP("symUserNames", "Push"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 8' stop + upper tremolo 8' stop + 16' stop (accordion)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, lower tremolo 8' stop + 8' stop + upper tremolo 8' stop (authentic musette)"),
+      //QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 8' stop + 16' stop (bandone\\u00f3n)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 8' stop + 16' stop (bandoneón)"), // workaround for Qt lupdate bug https://bugreports.qt.io/browse/QTBUG-35164
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 16' stop (bassoon)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 8' stop (clarinet)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, lower tremolo 8' stop + 8' stop + upper tremolo 8' stop + 16' stop"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop + lower tremolo 8' stop + 8' stop + upper tremolo 8' stop"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop + lower tremolo 8' stop + 8' stop + upper tremolo 8' stop + 16' stop"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop + 8' stop + 16' stop (harmonium)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop + 8' stop + upper tremolo 8' stop (imitation musette)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, lower tremolo 8' stop"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop + lower tremolo 8' stop + upper tremolo 8' stop + 16' stop (master)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop + 8' stop (oboe)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop + 16' stop (organ)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop (piccolo)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, lower tremolo 8' stop + upper tremolo 8' stop + 16' stop"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 4' stop + lower tremolo 8' stop + upper tremolo 8' stop"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, lower tremolo 8' stop + upper tremolo 8' stop"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, upper tremolo 8' stop"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 3 ranks, 8' stop + upper tremolo 8' stop (violin)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 4 ranks, alto"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 4 ranks, bass/alto"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 4 ranks, master"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 4 ranks, soft bass"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 4 ranks, soft tenor"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 4 ranks, soprano"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right hand, 4 ranks, tenor"),
+      QT_TRANSLATE_NOOP("symUserNames", "Ricochet (2 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Ricochet (3 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Ricochet (4 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Ricochet (5 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Ricochet (6 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining ricochet for stem (2 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining ricochet for stem (3 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining ricochet for stem (4 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining ricochet for stem (5 tones)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Combining ricochet for stem (6 tones)"),
       "1-comma flat",
       "1-comma sharp",
       "2-comma flat",
@@ -2954,12 +2966,14 @@ QVector<QString> Sym::symUserNames = {
       "5-comma sharp",
       "Arrow down (lower by one quarter-tone)",
       "Arrow up (raise by one quarter-tone)",
-      "Bakiye (flat)",
+      QT_TRANSLATE_NOOP("symUserNames", "Bakiye (flat)"),
       "Bakiye (sharp)",
       "Accidental bracket, left",
       "Accidental bracket, right",
-      "B\u00fcy\u00fck m\u00fccenneb (flat)",
-      "B\u00fcy\u00fck m\u00fccenneb (sharp)",
+      //QT_TRANSLATE_NOOP("symUserNames", "B\u00fcy\u00fck m\u00fccenneb (flat)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Büyük mücenneb (flat)"),  // workaround for Qt lupdate bug https://bugreports.qt.io/browse/QTBUG-35164
+      //QT_TRANSLATE_NOOP("symUserNames", "B\u00fcy\u00fck m\u00fccenneb (sharp)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Büyük mücenneb (sharp)"), // workaround for Qt lupdate bug https://bugreports.qt.io/browse/QTBUG-35164
       "Combining close curly brace",
       "Combining lower by one 17-limit schisma",
       "Combining lower by one 19-limit schisma",
@@ -2974,7 +2988,7 @@ QVector<QString> Sym::symUserNames = {
       "Combining raise by one 53-limit comma",
       "Syntonic/Didymus comma (80:81) down (Bosanquet)",
       "Syntonic/Didymus comma (80:81) up (Bosanquet)",
-      "Double flat",
+      QT_TRANSLATE_NOOP("symUserNames", "Double flat"),
       "Arabic double flat",
       "Double flat equal tempered semitone",
       "Double flat lowered by one syntonic comma",
@@ -2985,7 +2999,7 @@ QVector<QString> Sym::symUserNames = {
       "Turned double flat",
       "Double flat lowered by two syntonic commas",
       "Double flat raised by two syntonic commas",
-      "Double sharp",
+      QT_TRANSLATE_NOOP("symUserNames", "Double sharp"),
       "Arabic double sharp",
       "Double sharp equal tempered semitone",
       "Double sharp lowered by one syntonic comma",
@@ -3002,9 +3016,9 @@ QVector<QString> Sym::symUserNames = {
       "Filled reversed flat and flat with arrow up",
       "Filled reversed flat with arrow down",
       "Filled reversed flat with arrow up",
-      "Five-quarter-tones flat",
-      "Five-quarter-tones sharp",
-      "Flat",
+      QT_TRANSLATE_NOOP("symUserNames", "Five-quarter-tones flat"),
+      QT_TRANSLATE_NOOP("symUserNames", "Five-quarter-tones sharp"),
+      QT_TRANSLATE_NOOP("symUserNames", "Flat"),
       "Arabic half-tone flat",
       "Flat equal tempered semitone",
       "Lowered flat (Stockhausen)",
@@ -3030,9 +3044,10 @@ QVector<QString> Sym::symUserNames = {
       "Up arrow (raise by 33:32)",
       "Koma (flat)",
       "Koma (sharp)",
-      "Koron (quarter tone flat)",
+      QT_TRANSLATE_NOOP("symUserNames", "Koron (quarter tone flat)"),
       "K\u00fc\u00e7\u00fck m\u00fccenneb (flat)",
-      "K\u00fc\u00e7\u00fck m\u00fccenneb (sharp)",
+      //QT_TRANSLATE_NOOP("symUserNames", "K\u00fc\u00e7\u00fck m\u00fccenneb (sharp)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Küçük mücenneb (sharp)"), // workaround for Qt lupdate bug https://bugreports.qt.io/browse/QTBUG-35164
       "Large double sharp",
       "Lower by one septimal comma",
       "Lower by one tridecimal quartertone",
@@ -3041,16 +3056,16 @@ QVector<QString> Sym::symUserNames = {
       "Lowered (Stockhausen)",
       "Narrow reversed flat(quarter-tone flat)",
       "Narrow reversed flat and flat(three-quarter-tones flat)",
-      "Natural",
+      QT_TRANSLATE_NOOP("symUserNames", "Natural"),
       "Arabic natural",
       "Natural equal tempered semitone",
-      "Natural flat",
+      QT_TRANSLATE_NOOP("symUserNames", "Natural flat"),
       "Lowered natural (Stockhausen)",
       "Natural lowered by one syntonic comma",
       "Natural raised by one syntonic comma",
       "Raised natural (Stockhausen)",
       "Reversed natural",
-      "Natural sharp",
+      QT_TRANSLATE_NOOP("symUserNames", "Natural sharp"),
       "Natural lowered by three syntonic commas",
       "Natural raised by three syntonic commas",
       "Natural lowered by two syntonic commas",
@@ -3069,18 +3084,18 @@ QVector<QString> Sym::symUserNames = {
       "Raise by one equal tempered quarter tone",
       "Quarter-tone flat",
       "Arabic quarter-tone flat",
-      "Quarter-tone flat",
+      QT_TRANSLATE_NOOP("symUserNames", "Quarter-tone flat"),
       "Filled reversed flat (quarter-tone flat)",
-      "Quarter-tone flat",
+      QT_TRANSLATE_NOOP("symUserNames", "Quarter-tone flat"),
       "Quarter tone flat (Penderecki)",
-      "Reversed flat (quarter-tone flat) (Stein)",
+      QT_TRANSLATE_NOOP("symUserNames", "Reversed flat (quarter-tone flat) (Stein)"),
       "Quarter-tone flat (van Blankenburg)",
       "Quarter-tone sharp",
       "Arabic quarter-tone sharp",
-      "Quarter-tone sharp",
+      QT_TRANSLATE_NOOP("symUserNames", "Quarter-tone sharp"),
       "Quarter tone sharp (Bussotti)",
-      "Quarter-tone sharp",
-      "Half sharp (quarter-tone sharp) (Stein)",
+      QT_TRANSLATE_NOOP("symUserNames", "Quarter-tone sharp"),
+      QT_TRANSLATE_NOOP("symUserNames", "Half sharp (quarter-tone sharp) (Stein)"),
       "Quarter tone sharp with wiggly tail",
       "Raise by one septimal comma",
       "Raise by one tridecimal quartertone",
@@ -3091,7 +3106,7 @@ QVector<QString> Sym::symUserNames = {
       "Reversed flat and flat with arrow up",
       "Reversed flat with arrow down",
       "Reversed flat with arrow up",
-      "Sharp",
+      QT_TRANSLATE_NOOP("symUserNames", "Sharp"),
       "Arabic half-tone sharp",
       "Sharp equal tempered semitone",
       "Lowered sharp (Stockhausen)",
@@ -3102,7 +3117,7 @@ QVector<QString> Sym::symUserNames = {
       "Repeated sharp, note on line (Stockhausen)",
       "Repeated sharp, note in space (Stockhausen)",
       "Reversed sharp",
-      "Sharp sharp",
+      QT_TRANSLATE_NOOP("symUserNames", "Sharp sharp"),
       "Sharp lowered by three syntonic commas",
       "Sharp raised by three syntonic commas",
       "Sharp lowered by two syntonic commas",
@@ -3113,21 +3128,21 @@ QVector<QString> Sym::symUserNames = {
       "1/4 tone high",
       "1/6 tone low",
       "1/6 tone high",
-      "Sori (quarter tone sharp)",
+      QT_TRANSLATE_NOOP("symUserNames", "Sori (quarter tone sharp)"),
       "Byzantine-style Bakiye flat (Tavener)",
       "Byzantine-style Bu\u0308yu\u0308k mu\u0308cenneb sharp (Tavener)",
       "Arabic three-quarter-tones flat",
-      "Three-quarter-tones flat",
-      "Three-quarter-tones flat",
+      QT_TRANSLATE_NOOP("symUserNames", "Three-quarter-tones flat"),
+      QT_TRANSLATE_NOOP("symUserNames", "Three-quarter-tones flat"),
       "Three-quarter-tones flat (Couper)",
       "Three-quarter-tones flat (Grisey)",
       "Three-quarter-tones flat (Tartini)",
-      "Reversed flat and flat (three-quarter-tones flat) (Zimmermann)",
+      QT_TRANSLATE_NOOP("symUserNames", "Reversed flat and flat (three-quarter-tones flat) (Zimmermann)"),
       "Arabic three-quarter-tones sharp",
-      "Three-quarter-tones sharp",
-      "Three-quarter-tones sharp",
+      QT_TRANSLATE_NOOP("symUserNames", "Three-quarter-tones sharp"),
+      QT_TRANSLATE_NOOP("symUserNames", "Three-quarter-tones sharp"),
       "Three quarter tones sharp (Bussotti)",
-      "One and a half sharps (three-quarter-tones sharp) (Stein)",
+      QT_TRANSLATE_NOOP("symUserNames", "One and a half sharps (three-quarter-tones sharp) (Stein)"),
       "Three-quarter-tones sharp (Stockhausen)",
       "Triple flat",
       "Triple sharp",
@@ -3221,44 +3236,46 @@ QVector<QString> Sym::symUserNames = {
       "White arrowhead up (N)",
       "White arrowhead up-left (NW)",
       "White arrowhead up-right (NE)",
-      "Accent above",
-      "Accent below",
-      "Accent-staccato above",
-      "Accent-staccato below",
-      "Laissez vibrer (l.v.) above",
-      "Laissez vibrer (l.v.) below",
-      "Marcato above",
-      "Marcato below",
-      "Marcato-staccato above",
-      "Marcato-staccato below",
-      "Marcato-tenuto above",
-      "Marcato-tenuto below",
-      "Soft accent above",
-      "Soft accent below",
-      "Soft accent-staccato above",
-      "Soft accent-staccato below",
-      "Soft accent-tenuto above",
-      "Soft accent-tenuto below",
-      "Soft accent-tenuto-staccato above",
-      "Soft accent-tenuto-staccato below",
-      "Staccatissimo above",
-      "Staccatissimo below",
-      "Staccatissimo stroke above",
-      "Staccatissimo stroke below",
-      "Staccatissimo wedge above",
-      "Staccatissimo wedge below",
-      "Staccato above",
-      "Staccato below",
-      "Stress above",
-      "Stress below",
-      "Tenuto above",
-      "Tenuto-accent above",
-      "Tenuto-accent below",
-      "Tenuto below",
-      "Lour\u00e9 (tenuto-staccato) above",
-      "Lour\u00e9 (tenuto-staccato) below",
-      "Unstress above",
-      "Unstress below",
+      QT_TRANSLATE_NOOP("symUserNames", "Accent above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Accent below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Accent-staccato above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Accent-staccato below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Laissez vibrer (l.v.) above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Laissez vibrer (l.v.) below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Marcato above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Marcato below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Marcato-staccato above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Marcato-staccato below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Marcato-tenuto above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Marcato-tenuto below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Soft accent above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Soft accent below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Soft accent-staccato above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Soft accent-staccato below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Soft accent-tenuto above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Soft accent-tenuto below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Soft accent-tenuto-staccato above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Soft accent-tenuto-staccato below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Staccatissimo above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Staccatissimo below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Staccatissimo stroke above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Staccatissimo stroke below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Staccatissimo wedge above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Staccatissimo wedge below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Staccato above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Staccato below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Stress above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Stress below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Tenuto above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Tenuto-accent above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Tenuto-accent below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Tenuto below"),
+      //QT_TRANSLATE_NOOP("symUserNames", "Lour\\u00e9 (tenuto-staccato) above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Louré (tenuto-staccato) above"), // workaround for Qt lupdate bug https://bugreports.qt.io/browse/QTBUG-35164
+      //QT_TRANSLATE_NOOP("symUserNames", "Lour\\u00e9 (tenuto-staccato) below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Louré (tenuto-staccato) below"), // workaround for Qt lupdate bug https://bugreports.qt.io/browse/QTBUG-35164
+      QT_TRANSLATE_NOOP("symUserNames", "Unstress above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Unstress below"),
       "Augmentation dot",
       "Dashed barline",
       "Dotted barline",
@@ -3315,17 +3332,17 @@ QVector<QString> Sym::symUserNames = {
       "Smooth lift, long",
       "Smooth lift, medium",
       "Smooth lift, short",
-      "Muted (closed)",
+      QT_TRANSLATE_NOOP("symUserNames", "Muted (closed)"),
       "Half-muted (half-closed)",
-      "Open",
+      QT_TRANSLATE_NOOP("symUserNames", "Open"),
       "Plop",
       "Scoop",
       "Smear",
       "Valve trill",
-      "Breath mark (comma)",
-      "Breath mark (Salzedo)",
-      "Breath mark (tick-like)",
-      "Breath mark (upbow-like)",
+      QT_TRANSLATE_NOOP("symUserNames", "Breath mark (comma)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Breath mark (Salzedo)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Breath mark (tick-like)"),
+      QT_TRANSLATE_NOOP("symUserNames", "Breath mark (upbow-like)"),
       "Bridge clef",
       "Buzz roll",
       "C clef",
@@ -3336,10 +3353,10 @@ QVector<QString> Sym::symUserNames = {
       "Combining C clef",
       "Reversed C clef",
       "C clef (19th century)",
-      "Caesura",
-      "Curved caesura",
-      "Short caesura",
-      "Thick caesura",
+      QT_TRANSLATE_NOOP("symUserNames", "Caesura"),
+      QT_TRANSLATE_NOOP("symUserNames", "Curved caesura"),
+      QT_TRANSLATE_NOOP("symUserNames", "Short caesura"),
+      QT_TRANSLATE_NOOP("symUserNames", "Thick caesura"),
       "Accentus above",
       "Accentus below",
       "Punctum auctum, ascending",
@@ -3579,20 +3596,20 @@ QVector<QString> Sym::symUserNames = {
       "F clef change",
       "Reversed F clef",
       "Turned F clef",
-      "Fermata above",
-      "Fermata below",
-      "Long fermata above",
-      "Long fermata below",
-      "Long fermata (Henze) above",
-      "Long fermata (Henze) below",
-      "Short fermata above",
-      "Short fermata below",
-      "Short fermata (Henze) above",
-      "Short fermata (Henze) below",
-      "Very long fermata above",
-      "Very long fermata below",
-      "Very short fermata above",
-      "Very short fermata below",
+      QT_TRANSLATE_NOOP("symUserNames", "Fermata above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Fermata below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Long fermata above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Long fermata below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Long fermata (Henze) above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Long fermata (Henze) below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Short fermata above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Short fermata below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Short fermata (Henze) above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Short fermata (Henze) below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Very long fermata above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Very long fermata below"),
+      QT_TRANSLATE_NOOP("symUserNames", "Very short fermata above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Very short fermata below"),
       "Figured bass 0",
       "Figured bass 1",
       "Figured bass 2",
@@ -3753,8 +3770,8 @@ QVector<QString> Sym::symUserNames = {
       "Full barr\u00e9",
       "Half barr\u00e9",
       "Closed wah/volume pedal",
-      "Fade in",
-      "Fade out",
+      QT_TRANSLATE_NOOP("symUserNames", "Fade in"),
+      QT_TRANSLATE_NOOP("symUserNames", "Fade out"),
       "Golpe (tapping the pick guard)",
       "Half-open wah/volume pedal",
       "Left-hand tapping",
@@ -3776,7 +3793,7 @@ QVector<QString> Sym::symUserNames = {
       "Guitar vibrato bar dip",
       "Guitar vibrato bar scoop",
       "Vibrato wiggle segment",
-      "Volume swell",
+      QT_TRANSLATE_NOOP("symUserNames", "Volume swell"),
       "Wide vibrato wiggle segment",
       "Belltree",
       "Damp 3",
@@ -3900,10 +3917,10 @@ QVector<QString> Sym::symUserNames = {
       "Half note (minim) duration sign",
       "Quarter note (crotchet) duration sign",
       "Whole note (semibreve) duration sign",
-      "Right-hand fingering, first finger",
-      "Right-hand fingering, second finger",
-      "Right-hand fingering, third finger",
-      "Right-hand fingering, thumb",
+      QT_TRANSLATE_NOOP("symUserNames", "Right-hand fingering, first finger"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right-hand fingering, second finger"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right-hand fingering, third finger"),
+      QT_TRANSLATE_NOOP("symUserNames", "Right-hand fingering, thumb"),
       "10th course (diapason)",
       "Seventh course (diapason)",
       "Eighth course (diapason)",
@@ -4536,8 +4553,8 @@ QVector<QString> Sym::symUserNames = {
       "Ornament low right concave stroke",
       "Ornament low right convex stroke",
       "Ornament middle vertical stroke",
-      "Mordent",
-      "Inverted mordent",
+      QT_TRANSLATE_NOOP("symUserNames", "Mordent"),
+      QT_TRANSLATE_NOOP("symUserNames", "Inverted mordent"),
       "Oblique straight line NW-SE",
       "Oblique straight line SW-NE",
       "Oblique straight line tilted NW-SE",
@@ -4559,7 +4576,7 @@ QVector<QString> Sym::symUserNames = {
       "Mordent with release",
       "Mordent with upper prefix",
       "Pre-beat port de voix follwed by multiple mordent (Dandrieu)",
-      "Slide",
+      QT_TRANSLATE_NOOP("symUserNames", "Slide"),
       "Slide-trill with two-note suffix (J.S. Bach)",
       "Slide-trill (D'Anglebert)",
       "Slide-trill with one-note suffix (Marpurg)",
@@ -4583,11 +4600,11 @@ QVector<QString> Sym::symUserNames = {
       "Ornament top left convex stroke",
       "Ornament top right concave stroke",
       "Ornament top right convex stroke",
-      "Tremblement",
+      QT_TRANSLATE_NOOP("symUserNames", "Tremblement"),
       "Tremblement appuy\u00e9 (Couperin)",
-      "Trill",
-      "Turn",
-      "Inverted turn",
+      QT_TRANSLATE_NOOP("symUserNames", "Trill"),
+      QT_TRANSLATE_NOOP("symUserNames", "Turn"),
+      QT_TRANSLATE_NOOP("symUserNames", "Inverted turn"),
       "Turn with slash",
       "Turn up",
       "Inverted turn up",
@@ -4882,8 +4899,8 @@ QVector<QString> Sym::symUserNames = {
       "Fingernail flick",
       "Left-hand pizzicato",
       "Plectrum",
-      "Snap pizzicato above",
-      "Snap pizzicato below",
+      QT_TRANSLATE_NOOP("symUserNames", "Snap pizzicato above"),
+      QT_TRANSLATE_NOOP("symUserNames", "Snap pizzicato below"),
       "With fingernails",
       "Quindicesima",
       "Quindicesima alta",
@@ -5007,11 +5024,11 @@ QVector<QString> Sym::symUserNames = {
       "Bow on top of bridge",
       "Bow on tailpiece",
       "Change bow direction, indeterminate",
-      "Down bow",
+      QT_TRANSLATE_NOOP("symUserNames", "Down bow"),
       "Turned down bow",
       "Fouett\u00e9",
       "Half-harmonic",
-      "Harmonic",
+      QT_TRANSLATE_NOOP("symUserNames", "Harmonic"),
       "Jet\u00e9 (gettato) above",
       "Jet\u00e9 (gettato) below",
       "Mute off",
@@ -5021,9 +5038,9 @@ QVector<QString> Sym::symUserNames = {
       "Overpressure possibile, down bow",
       "Overpressure possibile, up bow",
       "Overpressure, up bow",
-      "Thumb position",
+      QT_TRANSLATE_NOOP("symUserNames", "Thumb position"),
       "Turned thumb position",
-      "Up bow",
+      QT_TRANSLATE_NOOP("symUserNames", "Up bow"),
       "Turned up bow",
       "Vibrato pulse accent (Saunders) for stem",
       "System divider",
@@ -5184,9 +5201,9 @@ QVector<QString> Sym::symUserNames = {
       "Quasi-random squiggle 2",
       "Quasi-random squiggle 3",
       "Quasi-random squiggle 4",
-      "Sawtooth line segment",
+      QT_TRANSLATE_NOOP("symUserNames", "Sawtooth line segment"),
       "Narrow sawtooth line segment",
-      "Wide sawtooth line segment",
+      QT_TRANSLATE_NOOP("symUserNames", "Wide sawtooth line segment"),
       "Square wave line segment",
       "Narrow square wave line segment",
       "Wide square wave line segment",
@@ -5203,12 +5220,12 @@ QVector<QString> Sym::symUserNames = {
       "Vibrato medium, slower",
       "Vibrato / shake wiggle segment",
       "Vibrato large, fast",
-      "Vibrato large, faster",
+      QT_TRANSLATE_NOOP("symUserNames", "Vibrato large, faster"),
       "Vibrato large, faster still",
       "Vibrato large, fastest",
       "Vibrato large, slow",
       "Vibrato large, slower",
-      "Vibrato large, slowest",
+      QT_TRANSLATE_NOOP("symUserNames", "Vibrato large, slowest"),
       "Vibrato largest, fast",
       "Vibrato largest, faster",
       "Vibrato largest, faster still",
@@ -5268,19 +5285,27 @@ QVector<QString> Sym::symUserNames = {
 //    EXTENSIONS
 //    SMuFL stylistic alternates which we need to access directly
 
-      "noteheadDoubleWholeAlt",           // double whole with double side bars
-      "6StringTabClefSerif",              // TAB clef in script style
+      "Double whole note (breve), single vertical strokes",
+      "4-string tab clef (serif)",
+      "6-string tab clef (serif)",
+      "C clef (French, 18th century)",
+      "C clef (French, 20th century)",
+      "F clef (French, 18th century)",
+      "F clef (19th century)",
+      "Small brace",
+      "Large brace",
+      "Larger brace",
 
-//    MuseScore local symbols, precomposed symbols to mimic some emmentaler glyphs
+//    MuseScore local symbols, precomposed symbols to mimic some Emmentaler glyphs
 
-      "ornamentPrallMordent",
-      "ornamentUpPrall",
-      "ornamentUpMordent",
-      "ornamentPrallDown",
-      "ornamentDownPrall",
-      "ornamentDownMordent",
-      "ornamentPrallUp",
-      "ornamentLinePrall",
+      QT_TRANSLATE_NOOP("symUserNames", "Prall mordent"),
+      QT_TRANSLATE_NOOP("symUserNames", "Up prall"),
+      QT_TRANSLATE_NOOP("symUserNames", "Up mordent"),
+      QT_TRANSLATE_NOOP("symUserNames", "Prall down"),
+      QT_TRANSLATE_NOOP("symUserNames", "Down prall"),
+      QT_TRANSLATE_NOOP("symUserNames", "Down mordent"),
+      QT_TRANSLATE_NOOP("symUserNames", "Prall up"),
+      QT_TRANSLATE_NOOP("symUserNames", "Line prall"),
 
 //    additional symbols
 
@@ -5288,7 +5313,7 @@ QVector<QString> Sym::symUserNames = {
       "noteLongaDown",
       "noteLongaSquareUp",
       "noteLongaSquareDown",
-      "space"
+      "Space"
       };
 
 //---------------------------------------------------------
@@ -5497,15 +5522,15 @@ QVector<oldName> oldNames = {
       {"d128flag",                              SymId::flag128thDown },             // flags.d7
 
       {"alto clef",                       SymId::cClef },                     // clefs.C
-      {"calto clef",                      SymId::cClef },                     // clefs.C_change stylistic alternate in SMuFL, better use the large one than nothing
+      {"calto clef",                      SymId::cClefChange },               // clefs.C_change
       {"bass clef",                       SymId::fClef },                     // clefs.F
-      {"cbass clef",                      SymId::fClef },                     // clefs.F_change stylistic alternate in SMuFL
+      {"cbass clef",                      SymId::fClefChange },               // clefs.F_change
       {"trebleclef",                      SymId::gClef },                     // clefs.G
-      {"ctrebleclef",                     SymId::gClef },                     // clefs.G_change stylistic alternate in SMuFL
+      {"ctrebleclef",                     SymId::gClefChange },               // clefs.G_change
       {"percussion clef",                 SymId::unpitchedPercussionClef1 },  // clefs.percussion
       {"cpercussion clef",                SymId::unpitchedPercussionClef1 },  // clefs.percussion_change stylistic alternate in SMuFL
       {"tab clef",                        SymId::sixStringTabClef },          // clefs.tab
-      {"ctab clef",                       SymId::sixStringTabClef },         // clefs.tab_change  stylistic alternate in SMuFL
+      {"ctab clef",                       SymId::sixStringTabClef },          // clefs.tab_change  stylistic alternate in SMuFL
       {"four four meter",                 SymId::timeSigCommon },             // timesig.C44
       {"allabreve",                       SymId::timeSigCutCommon },          // timesig.C22
       {"pedalasterisk",                   SymId::keyboardPedalUp },           // pedal.*
@@ -5595,7 +5620,10 @@ void ScoreFont::draw(SymId id, QPainter* painter, qreal mag, const QPointF& pos,
             return;
             }
       if (!isValid(id)) {
-            qDebug("ScoreFont::draw: invalid sym %d\n", int(id));
+            if (MScore::useFallbackFont && this != ScoreFont::fallbackFont())
+                  fallbackFont()->draw(id, painter, mag, pos, worldScale);
+            else
+                  qDebug("ScoreFont::draw: invalid sym %d", int(id));
             return;
             }
       int rv = FT_Load_Glyph(face, sym(id).index(), FT_LOAD_DEFAULT);
@@ -5617,8 +5645,8 @@ void ScoreFont::draw(SymId id, QPainter* painter, qreal mag, const QPointF& pos,
                   font->setFamily(_family);
                   font->setStyleStrategy(QFont::NoFontMerging);
                   font->setHintingPreference(QFont::PreferVerticalHinting);
-                  qreal size = 20.0;
-                  font->setPixelSize(lrint(size));
+                  qreal size = 20.0 * MScore::pixelRatio;
+                  font->setPointSize(size);
                   }
             qreal imag = 1.0 / mag;
             painter->scale(mag, mag);
@@ -5635,7 +5663,7 @@ void ScoreFont::draw(SymId id, QPainter* painter, qreal mag, const QPointF& pos,
       worldScale      *= pixelRatio;
 //      if (worldScale < 1.0)
 //            worldScale = 1.0;
-      int scale16      = lrint(worldScale * 6553.6 * mag);
+      int scale16      = lrint(worldScale * 6553.6 * mag * DPI_F);
 
       GlyphKey gk(face, id, mag, worldScale, color);
       GlyphPixmap* pm = cache->object(gk);
@@ -5723,6 +5751,7 @@ const char* Sym::id2name(SymId id)
 
 void initScoreFonts()
       {
+      ScoreFont::initGlyphNamesJson();
       int error = FT_Init_FreeType(&ftlib);
       if (!ftlib || error)
             qFatal("init freetype library failed");
@@ -5734,7 +5763,8 @@ void initScoreFonts()
       QFont::insertSubstitution("MScore Text",    "Bravura Text");
       QFont::insertSubstitution("Gootville Text", "Bravura Text");
       QFont::insertSubstitution("ScoreFont",      "Bravura Text");
-      QFont::insertSubstitution("MuseJazz",       "Bravura Text");
+      QFont::insertSubstitution("MuseJazz Text",   "Bravura Text");
+      ScoreFont::fallbackFont();   // load fallback font
       }
 
 //---------------------------------------------------------
@@ -5773,12 +5803,13 @@ void ScoreFont::computeMetrics(Sym* sym, int code)
             if (FT_Load_Glyph(face, index, FT_LOAD_DEFAULT) == 0) {
                   FT_BBox bb;
                   if (FT_Outline_Get_BBox(&face->glyph->outline, &bb) == 0) {
+                        constexpr double m = 640.0 / DPI_F;
                         QRectF bbox;
-                        bbox.setCoords(bb.xMin/640.0, -bb.yMax/640.0, bb.xMax/640.0, -bb.yMin/640.0);
+                        bbox.setCoords(bb.xMin/m, -bb.yMax/m, bb.xMax/m, -bb.yMin/m);
                         sym->setIndex(index);
                         sym->setCode(code);
                         sym->setBbox(bbox);
-                        sym->setAdvance(face->glyph->linearHoriAdvance / 655360.0);
+                        sym->setAdvance(face->glyph->linearHoriAdvance * DPI_F/ 655360.0);
                         }
                   }
             }
@@ -5807,18 +5838,9 @@ void ScoreFont::load()
       qreal pixelSize = 200.0;
       FT_Set_Pixel_Sizes(face, 0, int(pixelSize+.5));
 
-      QFile fi(_fontPath + "glyphnames.json");
-      if (!fi.open(QIODevice::ReadOnly))
-            qDebug("ScoreFont: open glyph names file <%s> failed", qPrintable(fi.fileName()));
-      QJsonParseError error;
-      QJsonObject o = QJsonDocument::fromJson(fi.readAll(), &error).object();
-      if (error.error != QJsonParseError::NoError)
-            qDebug("Json parse error in <%s>(offset: %d): %s", qPrintable(fi.fileName()),
-               error.offset, qPrintable(error.errorString()));
-
-      for (auto i : o.keys()) {
+      for (auto i : ScoreFont::glyphNamesJson().keys()) {
             bool ok;
-            int code = o.value(i).toObject().value("codepoint").toString().mid(2).toInt(&ok, 16);
+            int code = ScoreFont::glyphNamesJson().value(i).toObject().value("codepoint").toString().mid(2).toInt(&ok, 16);
             if (!ok)
                   qDebug("codepoint not recognized for glyph %s", qPrintable(i));
             if (Sym::lnhash.contains(i)) {
@@ -5829,16 +5851,17 @@ void ScoreFont::load()
             //else
             //      qDebug("unknown glyph: %s", qPrintable(i));
             }
-      fi.close();
-      fi.setFileName(_fontPath + "metadata.json");
+
+      QJsonParseError error;
+      QFile fi(_fontPath + "metadata.json");
       if (!fi.open(QIODevice::ReadOnly))
             qDebug("ScoreFont: open glyph metadata file <%s> failed", qPrintable(fi.fileName()));
-      o = QJsonDocument::fromJson(fi.readAll(), &error).object();
+      QJsonObject metadataJson = QJsonDocument::fromJson(fi.readAll(), &error).object();
       if (error.error != QJsonParseError::NoError)
             qDebug("Json parse error in <%s>(offset: %d): %s", qPrintable(fi.fileName()),
                error.offset, qPrintable(error.errorString()));
 
-      QJsonObject oo = o.value("glyphsWithAnchors").toObject();
+      QJsonObject oo = metadataJson.value("glyphsWithAnchors").toObject();
       for (auto i : oo.keys()) {
             constexpr qreal scale = SPATIUM20;
             QJsonObject ooo = oo.value(i).toObject();
@@ -5854,12 +5877,12 @@ void ScoreFont::load()
                   if (i == "stemDownNW") {
                         qreal x = ooo.value(i).toArray().at(0).toDouble();
                         qreal y = ooo.value(i).toArray().at(1).toDouble();
-                        sym->setStemDownNW(QPointF(4.0 * x, 4.0 * -y));
+                        sym->setStemDownNW(QPointF(4.0 * DPI_F * x, 4.0 * DPI_F * -y));
                         }
                   else if (i == "stemUpSE") {
                         qreal x = ooo.value(i).toArray().at(0).toDouble();
                         qreal y = ooo.value(i).toArray().at(1).toDouble();
-                        sym->setStemUpSE(QPointF(4.0 * x, 4.0 * -y));
+                        sym->setStemUpSE(QPointF(4.0 * DPI_F * x, 4.0 * DPI_F * -y));
                         }
                   else if (i == "cutOutNE") {
                         qreal x = ooo.value(i).toArray().at(0).toDouble() * scale;
@@ -5883,9 +5906,42 @@ void ScoreFont::load()
                         }
                   }
             }
+      oo = metadataJson.value("engravingDefaults").toObject();
+      static std::list<std::pair<QString, StyleIdx>> engravingDefaultsMapping = {
+            { "staffLineThickness",            StyleIdx::staffLineWidth },
+            { "stemThickness",                 StyleIdx::stemWidth },
+            { "beamThickness",                 StyleIdx::beamWidth },
+            { "beamSpacing",                   StyleIdx::beamDistance },
+            { "legerLineThickness",            StyleIdx::ledgerLineWidth },
+            { "legerLineExtension",            StyleIdx::ledgerLineLength },
+            { "slurEndpointThickness",         StyleIdx::SlurEndWidth },
+            { "slurMidpointThickness",         StyleIdx::SlurMidWidth },
+            { "thinBarlineThickness",          StyleIdx::barWidth },
+            { "thinBarlineThickness",          StyleIdx::doubleBarWidth },
+            { "thickBarlineThickness",         StyleIdx::endBarWidth },
+            { "dashedBarlineThickness",        StyleIdx::barWidth },
+            { "barlineSeparation",             StyleIdx::doubleBarDistance },
+            { "barlineSeparation",             StyleIdx::endBarDistance },
+            { "repeatBarlineDotSeparation",    StyleIdx::repeatBarlineDotSeparation },
+            { "bracketThickness",              StyleIdx::bracketWidth },
+            { "hairpinThickness",              StyleIdx::hairpinLineWidth },
+            { "octaveLineThickness",           StyleIdx::ottavaLineWidth },
+            { "pedalLineThickness",            StyleIdx::pedalLineWidth },
+            { "repeatEndingLineThickness",     StyleIdx::voltaLineWidth },
+            { "lyricLineThickness",            StyleIdx::lyricsLineThickness },
+            { "tupletBracketThickness",        StyleIdx::tupletBracketWidth }
+            };
+      for (auto i : oo.keys()) {
+            for (auto mapping : engravingDefaultsMapping) {
+                  if (i == mapping.first)
+                        _engravingDefaults.push_back(std::make_pair(mapping.second, oo.value(i).toDouble()));
+                  else if (i == "textEnclosureThickness")
+                        _textEnclosureThickness = oo.value(i).toDouble();
+                  }
+            }
+      _engravingDefaults.push_back(std::make_pair(StyleIdx::MusicalTextFont, QString("%1 Text").arg(_family)));
 
       // create missing composed glyphs
-
       struct Composed {
             SymId id;
             std::vector<SymId> rids;
@@ -5970,9 +6026,29 @@ void ScoreFont::load()
             SymId       id;
             }
       alternate[] = {
+                  {     QString("4stringTabClef"),
+                        QString("4stringTabClefSerif"),
+                        SymId::fourStringTabClefSerif
+                  },
                   {     QString("6stringTabClef"),
                         QString("6stringTabClefSerif"),
                         SymId::sixStringTabClefSerif
+                  },
+                  {     QString("cClef"),
+                        QString("cClefFrench"),
+                        SymId::cClefFrench
+                  },
+                  {     QString("cClef"),
+                        QString("cClefFrench20C"),
+                        SymId::cClefFrench20C
+                  },
+                  {     QString("fClef"),
+                        QString("fClefFrench"),
+                        SymId::fClefFrench
+                  },
+                  {     QString("fClef"),
+                        QString("fClef19thCentury"),
+                        SymId::fClef19thCentury
                   },
                   {     QString("noteheadBlack"),
                         QString("noteheadBlackOversized"),
@@ -5997,11 +6073,23 @@ void ScoreFont::load()
                   {     QString("noteheadDoubleWhole"),
                         QString("noteheadDoubleWholeAlt"),
                         SymId::noteheadDoubleWholeAlt
+                  },
+                  {     QString("brace"),
+                        QString("braceSmall"),
+                        SymId::braceSmall
+                  },
+                  {     QString("brace"),
+                        QString("braceLarge"),
+                        SymId::braceLarge
+                  },
+                  {     QString("brace"),
+                        QString("braceLarger"),
+                        SymId::braceLarger
                   }
             };
 
       // find each relevant alternate in "glyphsWithAlternates" value
-      QJsonObject oa = o.value("glyphsWithAlternates").toObject();
+      QJsonObject oa = metadataJson.value("glyphsWithAlternates").toObject();
       bool ok;
       for (const StylisticAlternate& c : alternate) {
             QJsonObject::const_iterator i = oa.find(c.key);
@@ -6024,12 +6112,20 @@ void ScoreFont::load()
       // add space symbol
       Sym* sym = &_symbols[int(SymId::space)];
       computeMetrics(sym, 32);
-
-      /*for (int i = 1; i < int(SymId::lastSym); ++i) {
-            Sym sym = _symbols[i];
-            if (!sym.isValid())
-                  qDebug("invalid symbol %s", Sym::id2name(SymId(i)));
-            }*/
+#if 0
+      //
+      // check for missing symbols
+      //
+      ScoreFont* fb = ScoreFont::fallbackFont();
+      if (fb && fb != this) {
+            for (int i = 1; i < int(SymId::lastSym); ++i) {
+                  const Sym& sym = _symbols[i];
+                  if (!sym.isValid()) {
+                        qDebug("invalid symbol %s", Sym::id2name(SymId(i)));
+                        }
+                  }
+            }
+#endif
       }
 
 //---------------------------------------------------------
@@ -6080,11 +6176,44 @@ const char* ScoreFont::fallbackTextFont()
       }
 
 //---------------------------------------------------------
+//   initGlyphNamesJson
+//---------------------------------------------------------
+
+bool ScoreFont::initGlyphNamesJson()
+      {
+      QFile fi(":fonts/smufl/glyphnames.json");
+      if (!fi.open(QIODevice::ReadOnly)) {
+            qDebug("ScoreFont: open glyph names file <%s> failed", qPrintable(fi.fileName()));
+            return false;
+            }
+      QJsonParseError error;
+      _glyphnamesJson = QJsonDocument::fromJson(fi.readAll(), &error).object();
+      if (error.error != QJsonParseError::NoError) {
+            qDebug("Json parse error in <%s>(offset: %d): %s", qPrintable(fi.fileName()),
+               error.offset, qPrintable(error.errorString()));
+            return false;
+            }
+      fi.close();
+      return true;
+      }
+
+//---------------------------------------------------------
+//   useFallbackFont
+//---------------------------------------------------------
+
+bool ScoreFont::useFallbackFont(SymId id) const
+      {
+      return MScore::useFallbackFont && !sym(id).isValid() && this != ScoreFont::fallbackFont();
+      }
+
+//---------------------------------------------------------
 //   bbox
 //---------------------------------------------------------
 
 const QRectF ScoreFont::bbox(SymId id, qreal mag) const
       {
+      if (useFallbackFont(id))
+            return fallbackFont()->bbox(id, mag);
       QRectF r = sym(id).bbox();
       return QRectF(r.x() * mag, r.y() * mag, r.width() * mag, r.height() * mag);
       }
@@ -6095,14 +6224,63 @@ const QRectF ScoreFont::bbox(const std::vector<SymId>& s, qreal mag) const
       QPointF pos;
       for (SymId id : s) {
             r |= bbox(id, mag).translated(pos);
-            pos.rx() += sym(id).advance() * mag;
+            pos.rx() += advance(id, mag);
             }
       return r;
+      }
+
+qreal ScoreFont::advance(SymId id, qreal mag) const
+      {
+      if (useFallbackFont(id))
+            return fallbackFont()->advance(id, mag);
+      return sym(id).advance() * mag;
       }
 
 qreal ScoreFont::width(const std::vector<SymId>& s, qreal mag) const
       {
       return bbox(s, mag).width();
+      }
+
+QPointF ScoreFont::stemDownNW(SymId id, qreal mag) const
+      {
+      if (useFallbackFont(id))
+            return fallbackFont()->stemDownNW(id, mag);
+      return sym(id).stemDownNW() * mag;
+      }
+
+QPointF ScoreFont::stemUpSE(SymId id, qreal mag) const
+      {
+      if (useFallbackFont(id))
+            return fallbackFont()->stemUpSE(id, mag);
+      return sym(id).stemUpSE() * mag;
+      }
+
+QPointF ScoreFont::cutOutNE(SymId id, qreal mag) const
+      {
+      if (useFallbackFont(id))
+            return fallbackFont()->cutOutNE(id, mag);
+      return sym(id).cutOutNE() * mag;
+      }
+
+QPointF ScoreFont::cutOutNW(SymId id, qreal mag) const
+      {
+      if (useFallbackFont(id))
+            return fallbackFont()->cutOutNW(id, mag);
+      return sym(id).cutOutNW() * mag;
+      }
+
+QPointF ScoreFont::cutOutSE(SymId id, qreal mag) const
+      {
+      if (useFallbackFont(id))
+            return fallbackFont()->cutOutSE(id, mag);
+      return sym(id).cutOutSE() * mag;
+      }
+
+QPointF ScoreFont::cutOutSW(SymId id, qreal mag) const
+      {
+      if (useFallbackFont(id))
+            return fallbackFont()->cutOutSW(id, mag);
+      return sym(id).cutOutSW() * mag;
       }
 
 //---------------------------------------------------------

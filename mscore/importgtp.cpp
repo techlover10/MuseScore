@@ -54,6 +54,7 @@
 #include "libmscore/ottava.h"
 #include "libmscore/notedot.h"
 #include "libmscore/stafftext.h"
+#include "libmscore/sym.h"
 #include "preferences.h"
 
 namespace Ms {
@@ -501,7 +502,7 @@ void GuitarPro::readVolta(GPVolta* gpVolta, Measure* m)
                               break;
                         }
                   }
-            volta->setText(Xml::xmlString(voltaTextString));
+            volta->setText(XmlWriter::xmlString(voltaTextString));
             volta->setTick(m->tick());
             volta->setTick2(m->tick() + m->ticks());
             score->addElement(volta);
@@ -736,7 +737,7 @@ void GuitarPro::createMeasures()
             if (i == 0 || ts != nts) {
                   for (int staffIdx = 0; staffIdx < staves; ++staffIdx) {
                         Staff* staff = score->staff(staffIdx);
-                        StaffType* staffType = staff->staffType();
+                        StaffType* staffType = staff->staffType(tick);
                         if (staffType->genTimesig()) {
                               TimeSig* t = new TimeSig(score);
                               t->setTrack(staffIdx * VOICES);
@@ -801,18 +802,18 @@ void GuitarPro::applyBeatEffects(Chord* chord, int beatEffect)
             addPop(chord->upNote());
       else if (beatEffect == 4) {
             Articulation* a = new Articulation(chord->score());
-            a->setArticulationType(ArticulationType::FadeIn);
+            a->setSymId(SymId::guitarFadeIn);
             a->setAnchor(ArticulationAnchor::TOP_STAFF);
             chord->add(a);
             }
       else if (beatEffect == 5) {
             Articulation* a = new Articulation(chord->score());
-            a->setArticulationType(ArticulationType::Upbow);
+            a->setSymId(SymId::stringsUpBow);
             chord->add(a);
             }
       else if (beatEffect == 6) {
             Articulation* art = new Articulation(chord->score());
-            art->setArticulationType(ArticulationType::Downbow);
+            art->setSymId(SymId::stringsDownBow);
             chord->add(art);
             }
       }
@@ -1030,12 +1031,21 @@ void GuitarPro::setTempo(int tempo, Measure* measure)
       TempoText* tt = new TempoText(score);
       tt->setTempo(double(tempo)/60.0);
       tt->setXmlText(QString("<sym>metNoteQuarterUp</sym> = %1").arg(tempo));
-
       tt->setTrack(0);
       Segment* segment = measure->getSegment(Segment::Type::ChordRest, measure->tick());
-      segment->add(tt);
-      score->setTempo(measure->tick(), tt->tempo());
-      previousTempo = tempo;
+      bool foundTempo = false;
+      for (Element* e : segment->annotations()) {
+            if (e->type() == Element::Type::TEMPO_TEXT) {
+                  foundTempo = true;
+                  delete tt;
+                  break;
+                  }
+            }
+      if (!foundTempo) {
+            segment->add(tt);
+            score->setTempo(measure->tick(), tt->tempo());
+            previousTempo = tempo;
+            }
       }
 
 //---------------------------------------------------------
@@ -1218,7 +1228,7 @@ void GuitarPro2::read(QFile* fp)
                   bar.repeatFlags = bar.repeatFlags | Repeat::START;
             if (barBits & SCORE_REPEAT_END) {
                   bar.repeatFlags = bar.repeatFlags | Repeat::END;
-                  bar.repeats = readUChar();
+                  bar.repeats = readUChar() + 1;
                   }
             if (barBits & SCORE_VOLTA) {
                   uchar voltaNumber = readUChar();
@@ -1322,17 +1332,17 @@ void GuitarPro2::read(QFile* fp)
                   clefId = ClefType::PERC;
                   // instr->setUseDrumset(DrumsetKind::GUITAR_PRO);
                   instr->setDrumset(gpDrumset);
-                  staff->setStaffType(StaffType::preset(StaffTypes::PERC_DEFAULT));
+                  staff->setStaffType(0, StaffType::preset(StaffTypes::PERC_DEFAULT));
                   }
             else if (patch >= 24 && patch < 32)
-                  clefId = ClefType::G3;
+                  clefId = ClefType::G8_VB;
             else if (patch >= 32 && patch < 40)
-                  clefId = ClefType::F8;
+                  clefId = ClefType::F8_VB;
             Measure* measure = score->firstMeasure();
             Clef* clef = new Clef(score);
             clef->setClefType(clefId);
             clef->setTrack(i * VOICES);
-            Segment* segment = measure->getSegment(Segment::Type::Clef, 0);
+            Segment* segment = measure->getSegment(Segment::Type::HeaderClef, 0);
             segment->add(clef);
 
             if (capo > 0) {
@@ -1807,7 +1817,7 @@ void GuitarPro3::read(QFile* fp)
                   bar.repeatFlags = bar.repeatFlags | Repeat::START;
             if (barBits & SCORE_REPEAT_END) {                // number of repeats
                   bar.repeatFlags = bar.repeatFlags | Repeat::END;
-                  bar.repeats = readUChar();
+                  bar.repeats = readUChar() + 1;
                   }
             if (barBits & SCORE_VOLTA) {                      // a volta
                   uchar voltaNumber = readUChar();
@@ -1940,17 +1950,17 @@ void GuitarPro3::read(QFile* fp)
                   clefId = ClefType::PERC;
                   // instr->setUseDrumset(DrumsetKind::GUITAR_PRO);
                   instr->setDrumset(gpDrumset);
-                  staff->setStaffType(StaffType::preset(StaffTypes::PERC_DEFAULT));
+                  staff->setStaffType(0, StaffType::preset(StaffTypes::PERC_DEFAULT));
                   }
             else if (patch >= 24 && patch < 32)
-                  clefId = ClefType::G3;
+                  clefId = ClefType::G8_VB;
             else if (patch >= 32 && patch < 40)
-                  clefId = ClefType::F8;
+                  clefId = ClefType::F8_VB;
             Measure* measure = score->firstMeasure();
             Clef* clef = new Clef(score);
             clef->setClefType(clefId);
             clef->setTrack(i * VOICES);
-            Segment* segment = measure->getSegment(Segment::Type::Clef, 0);
+            Segment* segment = measure->getSegment(Segment::Type::HeaderClef, 0);
             segment->add(clef);
 
             if (capo > 0) {
@@ -2230,9 +2240,9 @@ void GuitarPro::createCrecDim(int staffIdx, int track, int tick, bool crec)
       {
       hairpins[staffIdx] = new Hairpin(score);
       if (crec)
-            hairpins[staffIdx]->setHairpinType(Hairpin::Type::CRESCENDO);
+            hairpins[staffIdx]->setHairpinType(HairpinType::CRESC_HAIRPIN);
       else
-            hairpins[staffIdx]->setHairpinType(Hairpin::Type::DECRESCENDO);
+            hairpins[staffIdx]->setHairpinType(HairpinType::DECRESC_HAIRPIN);
       hairpins[staffIdx]->setTick(tick);
       hairpins[staffIdx]->setTick2(tick);
       hairpins[staffIdx]->setTrack(track);
@@ -2257,6 +2267,7 @@ Score::FileError importGTP(MasterScore* score, const QString& name)
             // check to see if we are dealing with a GPX file via the extension
             if (name.endsWith(".gpx", Qt::CaseInsensitive)) {
                   gp = new GuitarPro6(score);
+                  gp->initGuitarProDrumset();
                   gp->read(&fp);
                   fp.close();
                   }
@@ -2374,6 +2385,7 @@ Score::FileError importGTP(MasterScore* score, const QString& name)
       // create parts (excerpts)
       //
       foreach(Part* part, score->parts()) {
+            QMultiMap<int, int> tracks;
             Score* pscore = new Score(static_cast<MasterScore*>(score));
             pscore->style()->set(StyleIdx::createMultiMeasureRests, true);
 
@@ -2385,18 +2397,31 @@ Score::FileError importGTP(MasterScore* score, const QString& name)
 
             Staff* s = new Staff(pscore);
             s->setPart(p);
-            StaffType* st = staff->staffType();
-            s->setStaffType(st);
+            StaffType* st = staff->staffType(0);
+            s->setStaffType(0, st);
 //            int idx = pscore->staffTypeIdx(st);
 //            if (idx == -1)
 //                  pscore->addStaffType(st);
             s->linkTo(staff);
             p->staves()->append(s);
             pscore->staves().append(s);
-            stavesMap.append(score->staffIdx(staff));
-            cloneStaves(score, pscore, stavesMap);
+            stavesMap.append(staff->idx());
 
-            if (staff->part()->instrument()->stringData()->strings() > 0 && part->staves()->front()->staffType()->group() == StaffGroup::STANDARD) {
+            for (int i = staff->idx() * VOICES, j = 0; i < staff->idx() * VOICES + VOICES; i++, j++)
+                  tracks.insert(i, j);
+
+//            pscore->setName(part->partName());
+            Excerpt* excerpt = new Excerpt(score);
+            excerpt->setTracks(tracks);
+            excerpt->setPartScore(pscore);
+            pscore->setExcerpt(excerpt);
+            excerpt->setTitle(part->partName());
+            excerpt->parts().append(part);
+            score->excerpts().append(excerpt);
+
+            Excerpt::cloneStaves(score, pscore, stavesMap, tracks);
+
+            if (staff->part()->instrument()->stringData()->strings() > 0 && part->staves()->front()->staffType(0)->group() == StaffGroup::STANDARD) {
                   p->setStaves(2);
                   Staff* s1 = p->staff(1);
 
@@ -2405,19 +2430,12 @@ Score::FileError importGTP(MasterScore* score, const QString& name)
                   if (lines == 4)
                         sts = StaffTypes::TAB_4COMMON;
                   StaffType st = *StaffType::preset(sts);
-                  s1->setStaffType(&st);
-                  s1->setLines(lines);
-                  cloneStaff(s,s1);
+                  s1->setStaffType(0, &st);
+                  s1->setLines(0, lines);
+                  Excerpt::cloneStaff(s, s1);
                   p->staves()->front()->addBracket(BracketItem(BracketType::NORMAL, 2));
                   }
             pscore->appendPart(p);
-
-            pscore->setName(part->partName());
-            Excerpt* excerpt = new Excerpt(score);
-            excerpt->setPartScore(pscore);
-            excerpt->setTitle(part->partName());
-            excerpt->parts().append(part);
-            score->excerpts().append(excerpt);
 
             //
             // create excerpt title

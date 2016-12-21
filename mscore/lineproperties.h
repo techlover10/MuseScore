@@ -27,7 +27,7 @@
 
 namespace Ms {
 
-class TextLine;
+class TextLineBase;
 class Text;
 
 //---------------------------------------------------------
@@ -37,8 +37,9 @@ class Text;
 class LineProperties : public QDialog, public Ui::LinePropertiesDialog {
       Q_OBJECT
 
-      TextLine* otl;    // original text line
-      TextLine* tl;     // cloned original text line to record changes in Text elements
+      TextLineBase* tl;
+
+      virtual void hideEvent(QHideEvent*);
 
    private slots:
       virtual void accept();
@@ -47,7 +48,7 @@ class LineProperties : public QDialog, public Ui::LinePropertiesDialog {
       void endTextProperties();
 
    public:
-      LineProperties(TextLine*, QWidget* parent = 0);
+      LineProperties(TextLineBase*, QWidget* parent = 0);
       ~LineProperties();
       };
 

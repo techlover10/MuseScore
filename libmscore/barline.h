@@ -15,14 +15,11 @@
 
 #include "element.h"
 
-class QPainter;
-
 namespace Ms {
 
 class MuseScoreView;
 class Segment;
 
-static const int DEFAULT_BARLINE_TO             = 4 * 2;
 static const int MIN_BARLINE_FROMTO_DIST        = 2;
 static const int MIN_BARLINE_SPAN_FROMTO        = -2;
 
@@ -40,11 +37,6 @@ static const int BARLINE_SPAN_SHORT1_TO         = 6;
 static const int BARLINE_SPAN_SHORT2_FROM       = 1;
 static const int BARLINE_SPAN_SHORT2_TO         = 7;
 
-// used while reading a score for a default spanTo (to last staff line) toward a staff not yet read;
-// fixed once all staves are read
-
-static const int UNKNOWN_BARLINE_TO             = -6;
-
 //---------------------------------------------------------
 //   BarLineTableItem
 //---------------------------------------------------------
@@ -57,15 +49,20 @@ struct BarLineTableItem {
 
 //---------------------------------------------------------
 //   @@ BarLine
+//
+//   @P barLineType  enum  (BarLineType.NORMAL, .DOUBLE, .START_REPEAT, .END_REPEAT, .BROKEN, .END, .END_START_REPEAT, .DOTTED)
 //---------------------------------------------------------
 
 class BarLine : public Element {
       Q_OBJECT
 
+      Q_PROPERTY(Ms::MSQE_BarLineType::E barLineType READ qmlBarLineType)
+      Q_ENUMS(Ms::MSQE_BarLineType::E)
+
       BarLineType _barLineType { BarLineType::NORMAL };
       int _span                { 1 };           // number of staves spanned by the barline
       int _spanFrom            { 0 };           // line number on start and end staves
-      int _spanTo              { DEFAULT_BARLINE_TO };
+      int _spanTo              { 0 };
       bool _customSpan         { false };
 
       // static variables used while dragging
@@ -80,12 +77,12 @@ class BarLine : public Element {
       void drawDots(QPainter* painter, qreal x) const;
 
    public:
-      BarLine(Score*);
+      BarLine(Score* s = 0);
       BarLine &operator=(const BarLine&) = delete;
 
       virtual BarLine* clone() const override     { return new BarLine(*this); }
       virtual Element::Type type() const override { return Element::Type::BAR_LINE; }
-      virtual void write(Xml& xml) const override;
+      virtual void write(XmlWriter& xml) const override;
       virtual void read(XmlReader&) override;
       virtual void draw(QPainter*) const override;
       virtual QPointF pagePos() const override;      ///< position in canvas coordinates
@@ -129,9 +126,10 @@ class BarLine : public Element {
       BarLineType barLineType() const    { return _barLineType;  }
       static BarLineType barLineType(const QString&);
 
+      Ms::MSQE_BarLineType::E qmlBarLineType() const { return static_cast<Ms::MSQE_BarLineType::E>(_barLineType); }
+
       virtual int subtype() const override         { return int(_barLineType); }
       virtual QString subtypeName() const override { return qApp->translate("barline", barLineTypeName().toUtf8()); }
-
 
       virtual QVariant getProperty(P_ID propertyId) const override;
       virtual bool setProperty(P_ID propertyId, const QVariant&) override;
@@ -152,5 +150,8 @@ class BarLine : public Element {
       static const std::vector<BarLineTableItem> barLineTable;
       };
 }     // namespace Ms
+
+Q_DECLARE_METATYPE(Ms::MSQE_BarLineType::E);
+
 #endif
 

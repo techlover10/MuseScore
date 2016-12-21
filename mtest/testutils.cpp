@@ -89,7 +89,7 @@ Element* MTest::writeReadElement(Element* element)
       //
       QBuffer buffer;
       buffer.open(QIODevice::WriteOnly);
-      Xml xml(&buffer);
+      XmlWriter xml(element->score(), &buffer);
       xml.header();
       element->write(xml);
       buffer.close();
@@ -100,7 +100,7 @@ Element* MTest::writeReadElement(Element* element)
 // printf("===read <%s>===\n", element->name());
 // printf("%s\n", buffer.buffer().data());
 
-      XmlReader e(buffer.buffer());
+      XmlReader e(element->score(), buffer.buffer());
       e.readNextStartElement();
       QString tag(e.name().toString());
 // printf("read tag %s\n", qPrintable(tag));
@@ -141,10 +141,14 @@ MasterScore* MTest::readCreatedScore(const QString& name)
       QString csl  = fi.suffix().toLower();
 
       Score::FileError rv;
-      if (csl == "cap")
+      if (csl == "cap") {
             rv = importCapella(score, name);
-      else if (csl == "capx")
+            score->setMetaTag("originalFormat", csl);
+            }
+      else if (csl == "capx") {
             rv = importCapXml(score, name);
+            score->setMetaTag("originalFormat", csl);
+            }
       else if (csl == "ove")
             rv = importOve(score, name);
       else if (csl == "sgu")
@@ -194,6 +198,7 @@ bool MTest::compareFiles(const QString& saveName, const QString& compareWith) co
       QString cmd = "diff";
       QStringList args;
       args.append("-u");
+      args.append("--strip-trailing-cr");
       args.append(saveName);
       args.append(root + "/" + compareWith);
       QProcess p;

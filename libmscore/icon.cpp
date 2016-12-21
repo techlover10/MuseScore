@@ -19,7 +19,7 @@ namespace Ms {
 //   write
 //---------------------------------------------------------
 
-void Icon::write(Xml& xml) const
+void Icon::write(XmlWriter& xml) const
       {
       xml.stag(name());
       xml.tag("subtype", int(_iconType));
@@ -43,6 +43,25 @@ void Icon::read(XmlReader& e)
             else
                   e.unknown();
             }
+      }
+
+//---------------------------------------------------------
+//   layout
+//---------------------------------------------------------
+
+void Icon::layout()
+      {
+      setbbox(QRectF(0, 0, _extent, _extent));
+      }
+
+//---------------------------------------------------------
+//   draw
+//---------------------------------------------------------
+
+void Icon::draw(QPainter* p) const
+      {
+      QPixmap pm(_icon.pixmap(_extent, QIcon::Normal, QIcon::On));
+      p->drawPixmap(0, 0, pm);
       }
 
 }
